@@ -51,7 +51,8 @@ input[type="text"] {
 }
 
 .upload-box {
-    width: 580px;
+    width: 90%;
+    max-width: 580px;
     height: 200px;
     margin: 0 auto;
     border: 3px dashed #888;
