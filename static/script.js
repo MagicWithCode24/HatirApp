@@ -27,6 +27,13 @@ document.addEventListener("DOMContentLoaded", function () {
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
             const audioUrl = URL.createObjectURL(audioBlob);
 
+            const formData = new FormData();
+            formData.append("audio", audioBlob, "recording.wav");
+
+            fetch("/upload-audio", {
+                method: "POST",
+                body: formData
+            });
         });
 
         startBtn.disabled = true;
@@ -59,7 +66,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const maxNormalPreview = 2;
-        const maxOverlayPreview = 3; 
+        const maxOverlayPreview = 3;
 
         imageFiles.slice(0, maxNormalPreview).forEach(file => {
             const reader = new FileReader();
@@ -81,7 +88,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const overlayStackContainer = document.createElement("div");
             overlayStackContainer.className = "overlay-stack-container";
             
-            const slideDistance = 3.75; 
+            const slideDistance = 3.75;
 
             remainingImagesForOverlay.forEach((file, index) => { 
                 const reader = new FileReader();
@@ -89,9 +96,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     const img = document.createElement("img");
                     img.src = e.target.result;
                     img.classList.add("overlay");
-                    
-                    img.style.left = `${index * slideDistance}px`; 
-                    img.style.zIndex = remainingImagesForOverlay.length - index; 
+                    img.style.left = `${index * slideDistance}px`;
+                    img.style.zIndex = remainingImagesForOverlay.length - index;
                     overlayStackContainer.appendChild(img);
                 };
                 reader.readAsDataURL(file);
@@ -102,7 +108,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 extra.className = "extra-count";
                 extra.textContent = `+${extraCountToShow}`;
                 overlayStackContainer.appendChild(extra);
-            }            
+            }
 
             previewContainer.appendChild(overlayStackContainer);
         }
