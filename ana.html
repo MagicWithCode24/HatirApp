@@ -24,12 +24,28 @@
 
     <div class="form">
         <p class="not">Not / Ses Kaydı</p>
-        <textarea class="not-text" placeholder="Eklemek İstediğiniz Not..."></textarea>
+
+        <div class="not-container">
+          <textarea class="not-text" placeholder="Eklemek İstediğiniz Not..."></textarea>
+        </div>
+      
+        <div class="record-actions">
+          <button id="micBtn" class="mic-button" title="Ses Kaydı Başlat">🎤</button>
+      
+          <div id="recordPanel" class="record-panel">
+            <button id="startBtn">Başlat</button>
+            <button id="stopBtn" disabled>Durdur</button>
+          </div>
+        </div>
+      
         <button class="finish-btn" onclick="window.location.href='son.html'">Gönder</button>
-    </div>
+      </div>
+
 
     <footer class="footer">
         <p>Made by Muhammet Yaren</p>
     </footer>
+    
+    <script src="script.js"></script>
 </body>
 </html>
