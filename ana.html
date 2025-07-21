@@ -17,9 +17,10 @@
     <div class="upload-area">
         <h2>Fotoğraf / Video Yükle</h2>
         <div class="upload-box" onclick="document.getElementById('real-file').click();">
-            <p>Yüklemek için buraya tıklayın</p>
+            <p id="uploadText">Yüklemek için buraya tıklayın</p>
+            <div class="upload-preview" id="uploadPreview"></div>
         </div>
-        <input type="file" id="real-file" accept="image/*,video/*" style="display: none;">
+        <input type="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">        
     </div>
 
     <div class="form">
@@ -34,7 +35,7 @@
       
           <div id="recordPanel" class="record-panel">
             <button id="startBtn">Başlat</button>
-            <button id="stopBtn" disabled>Durdur</button>
+            <button id="stopBtn" disabled>Bitir</button>
           </div>
         </div>
       
@@ -45,7 +46,7 @@
     <footer class="footer">
         <p>Made by Muhammet Yaren</p>
     </footer>
-    
+
     <script src="script.js"></script>
 </body>
 </html>

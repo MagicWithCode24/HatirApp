@@ -52,16 +52,20 @@ input[type="text"] {
 .upload-box {
     width: 90%;
     max-width: 580px;
-    height: 200px;
+    min-height: 150px;
     margin: 0 auto;
     border: 3px dashed #888;
     border-radius: 10px;
     background-color: white;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    padding: 15px;
     transition: 0.3s;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .upload-box:hover {
@@ -69,11 +73,80 @@ input[type="text"] {
     border-color: #333;
 }
 
-.upload-box p {
+#uploadText {
     color: #666;
-    font-size: 25px;
-    padding: 10px;
+    font-size: 20px;
+    margin: 0;
 }
+
+.upload-preview {
+    display: flex;
+    gap: 10px; /* İlk resimler arasındaki boşluk */
+    flex-wrap: nowrap;
+    justify-content: center; /* Elemanları başta tutar */
+    align-items: center;
+    width: 100%;
+    margin-top: 10px;
+    position: relative; /* BURASI DA ÖNEMLİ: .extra-count için referans noktası */
+    overflow-x: auto; /* Yatay kaydırma gerekirse */
+    padding-bottom: 5px; /* Kaydırma çubuğu için boşluk */
+    /* Resimler kutuyu doldurmasın diye minimum yükseklik ve genişlik */
+    min-height: 100px; /* En az bir resim kadar yer aç */
+    box-sizing: border-box; /* Padding dahil boyuta */
+}
+
+.upload-preview img {
+    flex-shrink: 0;
+    height: 100px; /* Yükseklik aynı kalacak */
+    width: 80px; /* DEĞİŞTİRİLDİ: Eni genişletildi */
+    border-radius: 8px;
+    border: 2px solid #ccc;
+    object-fit: cover;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Üst üste binen resimler için kapsayıcı */
+.overlay-stack-container {
+    display: flex;
+    position: relative;
+    height: 100px;
+    margin-left: 10px;
+    margin-right: 0;
+    min-width: 0;
+    align-items: center;
+}
+
+.upload-preview img.overlay {
+    position: absolute;
+    top: 0;
+    height: 100px; /* Yükseklik aynı kalacak */
+    width: 80px; /* DEĞİŞTİRİLDİ: Eni genişletildi */
+    border-radius: 8px;
+    border: 2px solid #ccc;
+    object-fit: cover;
+    opacity: 0.6;
+    transition: all 0.3s ease;
+    /* `left` JavaScript'ten ayarlanacak */
+}
+
+.extra-count {
+    position: relative; /* absolute değil */
+    z-index: 20;
+    font-size: 18px;
+    color: #555;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 80px;
+    height: 100px;
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    background-color: rgba(250, 250, 250, 0.7); /* hafif saydam */
+    flex-shrink: 0; /* Boyutunu korusun */
+    margin-left: 5px; /* overlay'lerin sonuna mesafe */
+}
+
 
 .not {
     font-size: 24px;
