@@ -3,20 +3,19 @@ body {
     margin: 0;
     padding: 0;
     min-height: 100vh;
-    overflow-x: hidden;
+    font-family: 'Dancing Script', cursive;
 }
 
 h1 {
     margin: 0;
     padding: 0;
     text-align: center;
-    font-family: 'Dancing Script', cursive;
     font-size: 30px;
     margin-top: 20px;
 }
 
 .form {
-    padding: 40px;
+    padding: 20px 16px;
     max-width: 800px;
     margin: 0 auto;
     margin-top: 50px;
@@ -25,7 +24,6 @@ h1 {
 }
 
 .isim {
-    font-family: 'Dancing Script', cursive;
     font-size: 24px;
     font-weight: bold;
     margin-bottom: 10px;
@@ -33,6 +31,7 @@ h1 {
 
 input[type="text"] {
     padding: 12px;
+    font-family: 'Dancing Script', cursive;
     font-size: 16px;
     border: 2px solid #ccc;
     border-radius: 5px;
@@ -48,7 +47,6 @@ input[type="text"] {
 .upload-area h2 {
     font-size: 24px;
     margin-bottom: 20px;
-    font-family: 'Dancing Script', cursive;
 }
 
 .upload-box {
@@ -64,7 +62,6 @@ input[type="text"] {
     justify-content: center;
     cursor: pointer;
     transition: 0.3s;
-    box-sizing: border-box;
 }
 
 .upload-box:hover {
@@ -79,7 +76,6 @@ input[type="text"] {
 }
 
 .not {
-    font-family: 'Dancing Script', cursive;
     font-size: 24px;
     font-weight: bold;
     margin-bottom: 10px;
@@ -87,6 +83,7 @@ input[type="text"] {
 
 textarea.not-text {
     padding: 8px 10px;
+    font-family: 'Dancing Script', cursive;
     font-size: 16px;
     border: 2px solid #ccc;
     border-radius: 5px;
@@ -94,7 +91,6 @@ textarea.not-text {
     height: auto;
     min-height: 150px;
     box-sizing: border-box;
-    font-family: cursive;
     line-height: 1.4;
     resize: none;
 }
@@ -118,7 +114,6 @@ textarea.not-text {
 
 .footer {
     color: rgb(0, 21, 255);
-    font-family: cursive;
     padding: 10px 0;
     text-align: center;
     font-size: 14px;
