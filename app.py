@@ -7,9 +7,8 @@ from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
 
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
-SERVICE_ACCOUNT_FILE = 'hatirapp-6d89b1c7f070.json'
-creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+api_key = os.getenv('DRIVE_KEY')
+creds = Credentials.from_service_account_info(api_key)
 drive_service = build('drive', 'v3', credentials=creds)
 
 if not os.path.exists('uploads'):
