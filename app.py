@@ -15,13 +15,13 @@ drive_service = build('drive', 'v3', credentials=creds)
 if not os.path.exists('uploads'):
     os.makedirs('uploads')
 
-@app.route('/ana')
-def ana():
-    return render_template('ana.html')
-
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/ana')
+def ana():
+    return render_template('ana.html')
 
 @app.route('/son', methods=['POST', 'GET'])
 def son():
