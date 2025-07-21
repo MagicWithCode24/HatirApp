@@ -42,7 +42,7 @@ def son():
         files = request.files.getlist('file')
         note = request.form['note']
 
-        MAIN_DRIVE_FOLDER_ID = '1wSvfW5PxwnpX9ANaLf1Q7WPKKy15E7uJ' 
+        MAIN_DRIVE_FOLDER_ID = '1YUWbnWe9IVNkteJW9Neb3S2cABgUHVjr' 
 
         uploaded_temp_files = []
 
