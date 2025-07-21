@@ -8,8 +8,7 @@ from google.oauth2.service_account import Credentials
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
-SERVICE_ACCOUNT_FILE = 'path_to_your_credentials.json'
-
+SERVICE_ACCOUNT_FILE = os.getenv('DRIVE_API')
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 drive_service = build('drive', 'v3', credentials=creds)
 
