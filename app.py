@@ -19,19 +19,6 @@ if not os.path.exists('uploads'):
 def home():
     return render_template('index.html')
 
-@app.route('/upload-audio', methods=['POST'])
-def upload_audio():
-    audio = request.files['audio']
-    audio_filename = secure_filename('audio_recording.wav')
-    audio_path = os.path.join('uploads', audio_filename)
-    audio.save(audio_path)
-
-    media = MediaFileUpload(audio_path, mimetype='audio/wav')
-    file_metadata = {'name': audio_filename}
-    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-
-    return redirect(url_for('home'))
-
 @app.route('/son', methods=['POST', 'GET'])
 def son():
     if request.method == 'POST':
@@ -47,7 +34,10 @@ def son():
             filename = secure_filename(file.filename)
             file_path = os.path.join('uploads', filename)
             file.save(file_path)
-            media = MediaFileUpload(file_path, mimetype='image/jpeg')
+
+            mimetype = 'image/jpeg' if file.content_type.startswith('image/') else 'video/mp4' if file.content_type.startswith('video/') else 'audio/wav'
+
+            media = MediaFileUpload(file_path, mimetype=mimetype)
             file_metadata = {'name': filename, 'parents': [folder_id]}
             drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
