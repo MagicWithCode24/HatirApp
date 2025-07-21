@@ -5,23 +5,32 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
 from google.oauth2.service_account import Credentials
 
-app = Flask(__name__, template_folder='templates', static_folder='static')
+app = Flask(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 SERVICE_ACCOUNT_FILE = 'hatirapp-6d89b1c7f070.json'
 creds = Credentials.from_service_account_file(SERVICE_ACCOUNT_FILE, scopes=SCOPES)
 drive_service = build('drive', 'v3', credentials=creds)
 
+if not os.path.exists('uploads'):
+    os.makedirs('uploads')
+
 @app.route('/')
 def home():
     return render_template('index.html')
 
-if not os.path.exists('uploads'):
-    os.makedirs('uploads')
+@app.route('/upload-audio', methods=['POST'])
+def upload_audio():
+    audio = request.files['audio']
+    audio_filename = secure_filename('audio_recording.wav')
+    audio_path = os.path.join('uploads', audio_filename)
+    audio.save(audio_path)
 
-@app.route('/ana')
-def ana():
-    return render_template('ana.html')
+    media = MediaFileUpload(audio_path, mimetype='audio/wav')
+    file_metadata = {'name': audio_filename}
+    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+
+    return redirect(url_for('home'))
 
 @app.route('/son', methods=['POST', 'GET'])
 def son():
@@ -38,13 +47,7 @@ def son():
             filename = secure_filename(file.filename)
             file_path = os.path.join('uploads', filename)
             file.save(file_path)
-            
-            if filename.lower().endswith(('.mp4', '.mov')):
-                mimetype = 'video/mp4' if filename.lower().endswith('.mp4') else 'video/quicktime'
-            else:
-                mimetype = 'image/jpeg'
-                
-            media = MediaFileUpload(file_path, mimetype=mimetype)
+            media = MediaFileUpload(file_path, mimetype='image/jpeg')
             file_metadata = {'name': filename, 'parents': [folder_id]}
             drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
