@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
-import json 
+import json
 from werkzeug.utils import secure_filename
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -42,13 +42,27 @@ def son():
         files = request.files.getlist('file')
         note = request.form['note']
 
-        uploaded_temp_files = [] 
+        MAIN_DRIVE_FOLDER_ID = '1wSvfW5PxwnpX9ANaLf1Q7WPKKy15E7uU' 
+
+        uploaded_temp_files = []
 
         try:
-            folder_metadata = {'name': name, 'mimeType': 'application/vnd.google-apps.folder'}
-            folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
-            folder_id = folder['id']
-            print(f"Drive'da '{name}' klasörü oluşturuldu. ID: {folder_id}")
+            query = f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' and '{MAIN_DRIVE_FOLDER_ID}' in parents and trashed = false"
+            results = drive_service.files().list(q=query, fields="files(id, name)").execute()
+            
+            user_folder_id = None
+            if results.get('files'):
+                user_folder_id = results['files'][0]['id']
+                print(f"Drive'da '{name}' klasörü zaten var. ID: {user_folder_id}")
+            else:
+                folder_metadata = {
+                    'name': name,
+                    'mimeType': 'application/vnd.google-apps.folder',
+                    'parents': [MAIN_DRIVE_FOLDER_ID]
+                }
+                folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+                user_folder_id = folder['id']
+                print(f"Drive'da '{name}' klasörü oluşturuldu. ID: {user_folder_id}")
 
             for file in files:
                 if file.filename == '':
@@ -64,7 +78,7 @@ def son():
                     mimetype = file.content_type if file.content_type else 'application/octet-stream'
 
                     media = MediaFileUpload(file_path, mimetype=mimetype, resumable=True)
-                    file_metadata = {'name': filename, 'parents': [folder_id]}
+                    file_metadata = {'name': filename, 'parents': [user_folder_id]}
                     drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
                     print(f"'{filename}' Google Drive'a yüklendi.")
                 except Exception as file_upload_e:
@@ -81,7 +95,7 @@ def son():
                     uploaded_temp_files.append(note_file_path)
 
                     media = MediaFileUpload(note_file_path, mimetype='text/plain', resumable=True)
-                    note_metadata = {'name': note_filename, 'parents': [folder_id]}
+                    note_metadata = {'name': note_filename, 'parents': [user_folder_id]}
                     drive_service.files().create(body=note_metadata, media_body=media, fields='id').execute()
                     print(f"Not dosyası '{note_filename}' Google Drive'a yüklendi.")
                 except Exception as note_upload_e:
