@@ -81,31 +81,29 @@ input[type="text"] {
 
 .upload-preview {
     display: flex;
-    gap: 10px; /* İlk resimler arasındaki boşluk */
+    gap: 10px;
     flex-wrap: nowrap;
-    justify-content: center; /* Elemanları başta tutar */
+    justify-content: center;
     align-items: center;
     width: 100%;
     margin-top: 10px;
-    position: relative; /* BURASI DA ÖNEMLİ: .extra-count için referans noktası */
-    overflow-x: auto; /* Yatay kaydırma gerekirse */
-    padding-bottom: 5px; /* Kaydırma çubuğu için boşluk */
-    /* Resimler kutuyu doldurmasın diye minimum yükseklik ve genişlik */
-    min-height: 100px; /* En az bir resim kadar yer aç */
-    box-sizing: border-box; /* Padding dahil boyuta */
+    position: relative;
+    overflow-x: auto;
+    padding-bottom: 5px;
+    min-height: 100px;
+    box-sizing: border-box;
 }
 
 .upload-preview img {
     flex-shrink: 0;
-    height: 100px; /* Yükseklik aynı kalacak */
-    width: 80px; /* DEĞİŞTİRİLDİ: Eni genişletildi */
+    height: 100px;
+    width: 80px;
     border-radius: 8px;
     border: 2px solid #ccc;
     object-fit: cover;
     transition: transform 0.3s ease, opacity 0.3s ease;
 }
 
-/* Üst üste binen resimler için kapsayıcı */
 .overlay-stack-container {
     display: flex;
     position: relative;
@@ -119,18 +117,17 @@ input[type="text"] {
 .upload-preview img.overlay {
     position: absolute;
     top: 0;
-    height: 100px; /* Yükseklik aynı kalacak */
-    width: 80px; /* DEĞİŞTİRİLDİ: Eni genişletildi */
+    height: 100px;
+    width: 80px;
     border-radius: 8px;
     border: 2px solid #ccc;
     object-fit: cover;
     opacity: 0.6;
     transition: all 0.3s ease;
-    /* `left` JavaScript'ten ayarlanacak */
 }
 
 .extra-count {
-    position: relative; /* absolute değil */
+    position: relative;
     z-index: 20;
     font-size: 18px;
     color: #555;
@@ -142,9 +139,9 @@ input[type="text"] {
     height: 100px;
     border: 2px dashed #ccc;
     border-radius: 8px;
-    background-color: rgba(250, 250, 250, 0.7); /* hafif saydam */
-    flex-shrink: 0; /* Boyutunu korusun */
-    margin-left: 5px; /* overlay'lerin sonuna mesafe */
+    background-color: rgba(250, 250, 250, 0.7);
+    flex-shrink: 0;
+    margin-left: 5px;
 }
 
 

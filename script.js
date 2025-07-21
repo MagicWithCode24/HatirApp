@@ -27,7 +27,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
             const audioUrl = URL.createObjectURL(audioBlob);
 
-            // NOT: Şu an indirme veya sunucuya gönderme yapılmıyor
         });
 
         startBtn.disabled = true;
@@ -49,7 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const files = fileInput.files;
         const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
 
-        previewContainer.innerHTML = ''; // Önceki önizlemeleri temizle
+        previewContainer.innerHTML = '';
 
         if (imageFiles.length > 0) {
             uploadText.style.display = "none";
@@ -59,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
         }
 
-        const maxNormalPreview = 3;
+        const maxNormalPreview = 2;
         const maxOverlayPreview = 3; 
 
         imageFiles.slice(0, maxNormalPreview).forEach(file => {
@@ -82,7 +81,6 @@ document.addEventListener("DOMContentLoaded", function () {
             const overlayStackContainer = document.createElement("div");
             overlayStackContainer.className = "overlay-stack-container";
             
-            // DEĞİŞTİRİLDİ: Kayma mesafesini yarıya indirdik (7.5 / 2 = 3.75)
             const slideDistance = 3.75; 
 
             remainingImagesForOverlay.forEach((file, index) => { 
@@ -102,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (extraCountToShow > 0) {
                 const extra = document.createElement("div");
                 extra.className = "extra-count";
-                extra.textContent = `+${extraCountToShow}`;  // Artık sadece gizliler değil, tüm extra'lar
+                extra.textContent = `+${extraCountToShow}`;
                 overlayStackContainer.appendChild(extra);
             }            
 
