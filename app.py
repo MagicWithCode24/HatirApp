@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
 import os
+import json 
 from werkzeug.utils import secure_filename
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
@@ -7,12 +8,24 @@ from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
 
-api_key = os.getenv('DRIVE_KEY')
-creds = Credentials.from_service_account_info(api_key)
-drive_service = build('drive', 'v3', credentials=creds)
+json_key_string = os.getenv('DRIVE_KEY')
+
+if json_key_string is None:
+    raise ValueError("DRIVE_KEY ortam değişkeni tanımlı değil.")
+
+try:
+    service_account_info = json.loads(json_key_string)
+    creds = Credentials.from_service_account_info(service_account_info, scopes=['https://www.googleapis.com/auth/drive'])
+    drive_service = build('drive', 'v3', credentials=creds)
+    print("Google Drive servisi başarıyla başlatıldı ve yetkilendirildi.")
+except json.JSONDecodeError:
+    raise ValueError("DRIVE_KEY ortam değişkeninin içeriği geçerli bir JSON formatında değil.")
+except Exception as e:
+    raise Exception(f"Google Drive kimlik bilgileri yüklenirken veya servis başlatılırken bir hata oluştu: {e}")
 
 if not os.path.exists('uploads'):
     os.makedirs('uploads')
+    print("uploads klasörü oluşturuldu.")
 
 @app.route('/')
 def home():
@@ -29,31 +42,64 @@ def son():
         files = request.files.getlist('file')
         note = request.form['note']
 
-        folder_metadata = {'name': name, 'mimeType': 'application/vnd.google-apps.folder'}
-        folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
-        folder_id = folder['id']
+        uploaded_temp_files = [] 
 
-        for file in files:
-            filename = secure_filename(file.filename)
-            file_path = os.path.join('uploads', filename)
-            file.save(file_path)
+        try:
+            folder_metadata = {'name': name, 'mimeType': 'application/vnd.google-apps.folder'}
+            folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
+            folder_id = folder['id']
+            print(f"Drive'da '{name}' klasörü oluşturuldu. ID: {folder_id}")
 
-            mimetype = 'image/jpeg' if file.content_type.startswith('image/') else 'video/mp4' if file.content_type.startswith('video/') else 'audio/wav'
+            for file in files:
+                if file.filename == '':
+                    continue 
 
-            media = MediaFileUpload(file_path, mimetype=mimetype)
-            file_metadata = {'name': filename, 'parents': [folder_id]}
-            drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+                filename = secure_filename(file.filename)
+                file_path = os.path.join('uploads', filename)
+                
+                try:
+                    file.save(file_path)
+                    uploaded_temp_files.append(file_path)
 
-        if note:
-            note_filename = f'{name}_note.txt'
-            with open(note_filename, 'w') as note_file:
-                note_file.write(note)
+                    mimetype = file.content_type if file.content_type else 'application/octet-stream'
 
-            media = MediaFileUpload(note_filename, mimetype='text/plain')
-            note_metadata = {'name': note_filename, 'parents': [folder_id]}
-            drive_service.files().create(body=note_metadata, media_body=media, fields='id').execute()
+                    media = MediaFileUpload(file_path, mimetype=mimetype, resumable=True)
+                    file_metadata = {'name': filename, 'parents': [folder_id]}
+                    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+                    print(f"'{filename}' Google Drive'a yüklendi.")
+                except Exception as file_upload_e:
+                    print(f"Hata: '{filename}' yüklenirken bir sorun oluştu: {file_upload_e}")
+                    continue 
 
-        return redirect(url_for('home'))
+            if note:
+                note_filename = f'{name}_note.txt'
+                note_file_path = os.path.join('uploads', note_filename)
+                
+                try:
+                    with open(note_file_path, 'w', encoding='utf-8') as note_file: 
+                        note_file.write(note)
+                    uploaded_temp_files.append(note_file_path)
+
+                    media = MediaFileUpload(note_file_path, mimetype='text/plain', resumable=True)
+                    note_metadata = {'name': note_filename, 'parents': [folder_id]}
+                    drive_service.files().create(body=note_metadata, media_body=media, fields='id').execute()
+                    print(f"Not dosyası '{note_filename}' Google Drive'a yüklendi.")
+                except Exception as note_upload_e:
+                    print(f"Hata: Not dosyası yüklenirken bir sorun oluştu: {note_upload_e}")
+
+            return redirect(url_for('home'))
+
+        except Exception as e:
+            print(f"Genel bir hata oluştu: {e}")
+            return "Dosya yükleme sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.", 500
+        finally:
+            for temp_file_path in uploaded_temp_files:
+                if os.path.exists(temp_file_path):
+                    try:
+                        os.remove(temp_file_path)
+                        print(f"Geçici dosya silindi: {temp_file_path}")
+                    except Exception as clean_e:
+                        print(f"Hata: Geçici dosya silinirken sorun oluştu '{temp_file_path}': {clean_e}")
 
     return render_template('son.html')
 
