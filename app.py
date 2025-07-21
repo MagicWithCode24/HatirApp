@@ -16,6 +16,9 @@ drive_service = build('drive', 'v3', credentials=creds)
 def home():
     return render_template('index.html')
 
+if not os.path.exists('uploads'):
+    os.makedirs('uploads')
+
 @app.route('/ana')
 def ana():
     return render_template('ana.html')
@@ -35,7 +38,13 @@ def son():
             filename = secure_filename(file.filename)
             file_path = os.path.join('uploads', filename)
             file.save(file_path)
-            media = MediaFileUpload(file_path, mimetype='image/jpeg')
+            
+            if filename.lower().endswith(('.mp4', '.mov')):
+                mimetype = 'video/mp4' if filename.lower().endswith('.mp4') else 'video/quicktime'
+            else:
+                mimetype = 'image/jpeg'
+                
+            media = MediaFileUpload(file_path, mimetype=mimetype)
             file_metadata = {'name': filename, 'parents': [folder_id]}
             drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
 
