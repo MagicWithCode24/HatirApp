@@ -39,6 +39,14 @@ input[type="text"] {
     box-sizing: border-box;
 }
 
+input[type="text"], textarea.not-text {
+    font-family: cursive;
+}
+
+input[type="text"]::placeholder, textarea.not-text::placeholder {
+    font-family: 'Dancing Script', cursive;
+}
+
 .upload-area {
     text-align: center;
     margin-top: 80px;
@@ -153,7 +161,7 @@ input[type="text"] {
 
 textarea.not-text {
     padding: 8px 10px;
-    font-family: 'Dancing Script', cursive;
+    font-family: cursive;
     font-size: 16px;
     border: 2px solid #ccc;
     border-radius: 5px;
