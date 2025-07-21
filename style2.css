@@ -9,7 +9,7 @@ h1 {
     margin: 0;
     padding: 0;
     text-align: center;
-    font-family: cursive;
+    font-family: 'Dancing Script', cursive;
     font-size: 30px;
     margin-top: 20px;
 }
@@ -24,7 +24,7 @@ h1 {
 }
 
 .isim {
-    font-family: cursive;
+    font-family: 'Dancing Script', cursive;
     font-size: 24px;
     font-weight: bold;
     margin-bottom: 10px;
@@ -47,11 +47,11 @@ input[type="text"] {
 .upload-area h2 {
     font-size: 24px;
     margin-bottom: 20px;
-    font-family: cursive;
+    font-family: 'Dancing Script', cursive;
 }
 
 .upload-box {
-    width: 780px;
+    width: 580px;
     height: 200px;
     margin: 0 auto;
     border: 3px dashed #888;
@@ -76,7 +76,7 @@ input[type="text"] {
 }
 
 .not {
-    font-family: cursive;
+    font-family: 'Dancing Script', cursive;
     font-size: 24px;
     font-weight: bold;
     margin-bottom: 10px;
