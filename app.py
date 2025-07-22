@@ -15,7 +15,7 @@ client_secret = json.loads(google_client_secret_json)
 
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
 
-REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://hatirapp.onrender.com/oauth2callback')
+REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://hatirapp.onrender.com/ana')
 
 UPLOAD_FOLDER = 'uploads'
 if not os.path.exists(UPLOAD_FOLDER):
