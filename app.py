@@ -1,28 +1,31 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for
 import os
 import json
 from werkzeug.utils import secure_filename
-from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload
-import pathlib
+from google.oauth2.service_account import Credentials
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 's1mpl3-k3y')
 
-google_client_secret_json = os.getenv("GOOGLE_CLIENT_SECRET")
-client_secret = json.loads(google_client_secret_json)
+json_key_string = os.getenv('DRIVE_KEY')
 
-SCOPES = ['https://www.googleapis.com/auth/drive.file']
+if json_key_string is None:
+    raise ValueError("DRIVE_KEY ortam değişkeni tanımlı değil.")
 
-REDIRECT_URI = os.getenv('REDIRECT_URI', 'https://hatirapp.onrender.com/ana')
+try:
+    service_account_info = json.loads(json_key_string)
+    creds = Credentials.from_service_account_info(service_account_info, scopes=['https://www.googleapis.com/auth/drive'])
+    drive_service = build('drive', 'v3', credentials=creds)
+    print("Google Drive servisi başarıyla başlatıldı ve yetkilendirildi.")
+except json.JSONDecodeError:
+    raise ValueError("DRIVE_KEY ortam değişkeninin içeriği geçerli bir JSON formatında değil.")
+except Exception as e:
+    raise Exception(f"Google Drive kimlik bilgileri yüklenirken veya servis başlatılırken bir hata oluştu: {e}")
 
-UPLOAD_FOLDER = 'uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-
-flow = Flow.from_client_config(client_secret, SCOPES)
-flow.redirect_uri = REDIRECT_URI
+if not os.path.exists('uploads'):
+    os.makedirs('uploads')
+    print("uploads klasörü oluşturuldu.")
 
 @app.route('/')
 def home():
@@ -32,44 +35,21 @@ def home():
 def ana():
     return render_template('ana.html')
 
-@app.route('/authorize')
-def authorize():
-    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
-    session['state'] = state
-    return redirect(authorization_url)
-
-@app.route('/oauth2callback')
-def oauth2callback():
-    flow.fetch_token(authorization_response=request.url)
-
-    credentials = flow.credentials
-    session['credentials'] = credentials_to_dict(credentials)
-
-    drive_service = build('drive', 'v3', credentials=credentials)
-
-    return redirect(url_for('son'))
-
 @app.route('/son', methods=['POST', 'GET'])
 def son():
-    if 'credentials' not in session:
-        return redirect(url_for('authorize'))
-
-    credentials = session['credentials']
-    drive_service = build('drive', 'v3', credentials=credentials)
-
     if request.method == 'POST':
         name = request.form['name']
         files = request.files.getlist('file')
         note = request.form['note']
 
-        MAIN_DRIVE_FOLDER_ID = '1YUWbnWe9IVNkteJW9Neb3S2cABgUHVjr'
+        MAIN_DRIVE_FOLDER_ID = '1YUWbnWe9IVNkteJW9Neb3S2cABgUHVjr' 
 
         uploaded_temp_files = []
 
         try:
             query = f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' and '{MAIN_DRIVE_FOLDER_ID}' in parents and trashed = false"
             results = drive_service.files().list(q=query, fields="files(id, name)").execute()
-
+            
             user_folder_id = None
             if results.get('files'):
                 user_folder_id = results['files'][0]['id']
@@ -86,11 +66,11 @@ def son():
 
             for file in files:
                 if file.filename == '':
-                    continue
+                    continue 
 
                 filename = secure_filename(file.filename)
-                file_path = os.path.join(UPLOAD_FOLDER, filename)
-
+                file_path = os.path.join('uploads', filename)
+                
                 try:
                     file.save(file_path)
                     uploaded_temp_files.append(file_path)
@@ -103,14 +83,14 @@ def son():
                     print(f"'{filename}' Google Drive'a yüklendi.")
                 except Exception as file_upload_e:
                     print(f"Hata: '{filename}' yüklenirken bir sorun oluştu: {file_upload_e}")
-                    continue
+                    continue 
 
             if note:
                 note_filename = f'{name}_note.txt'
-                note_file_path = os.path.join(UPLOAD_FOLDER, note_filename)
-
+                note_file_path = os.path.join('uploads', note_filename)
+                
                 try:
-                    with open(note_file_path, 'w', encoding='utf-8') as note_file:
+                    with open(note_file_path, 'w', encoding='utf-8') as note_file: 
                         note_file.write(note)
                     uploaded_temp_files.append(note_file_path)
 
@@ -136,17 +116,6 @@ def son():
                         print(f"Hata: Geçici dosya silinirken sorun oluştu '{temp_file_path}': {clean_e}")
 
     return render_template('son.html')
-
-
-def credentials_to_dict(creds):
-    return {
-        'token': creds.token,
-        'refresh_token': creds.refresh_token,
-        'token_uri': creds.token_uri,
-        'client_id': creds.client_id,
-        'client_secret': creds.client_secret,
-        'scopes': creds.scopes
-    }
 
 if __name__ == "__main__":
     app.run(debug=True)
