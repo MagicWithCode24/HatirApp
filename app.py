@@ -1,31 +1,70 @@
-from flask import Flask, render_template, request, redirect, url_for
 import os
 import json
+from flask import Flask, render_template, request, redirect, url_for, flash
 from werkzeug.utils import secure_filename
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload
-from google.oauth2.service_account import Credentials
+import boto3
+from botocore.client import Config
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
-json_key_string = os.getenv('DRIVE_KEY')
+AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
+AWS_S3_REGION = os.environ.get('AWS_S3_REGION')
 
-if json_key_string is None:
-    raise ValueError("DRIVE_KEY ortam değişkeni tanımlı değil.")
+s3_client = None
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3_REGION:
+    try:
+        s3_client = boto3.client(
+            's3',
+            aws_access_key_id=AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
+            region_name=AWS_S3_REGION,
+            config=Config(signature_version='s3v4')
+        )
+        print("Amazon S3 istemcisi başarıyla başlatıldı.")
+    except Exception as e:
+        print(f"HATA: Amazon S3 istemcisi başlatılırken bir sorun oluştu: {e}")
+        s3_client = None
+else:
+    print("UYARI: AWS S3 ortam değişkenleri eksik. Dosya yüklemeleri çalışmayacak.")
 
-try:
-    service_account_info = json.loads(json_key_string)
-    creds = Credentials.from_service_account_info(service_account_info, scopes=['https://www.googleapis.com/auth/drive'])
-    drive_service = build('drive', 'v3', credentials=creds)
-    print("Google Drive servisi başarıyla başlatıldı ve yetkilendirildi.")
-except json.JSONDecodeError:
-    raise ValueError("DRIVE_KEY ortam değişkeninin içeriği geçerli bir JSON formatında değil.")
-except Exception as e:
-    raise Exception(f"Google Drive kimlik bilgileri yüklenirken veya servis başlatılırken bir hata oluştu: {e}")
+def upload_file_to_s3(file, username):
+    if not s3_client:
+        return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
 
-if not os.path.exists('uploads'):
-    os.makedirs('uploads')
-    print("uploads klasörü oluşturuldu.")
+    filename = secure_filename(file.filename)
+    s3_file_path = f"{username}/{filename}"
+
+    try:
+        s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
+        print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
+        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
+    except Exception as e:
+        print(f"Hata: '{filename}' S3'e yüklenirken bir sorun oluştu: {e}")
+        return None, f"S3 yükleme hatası: {e}"
+
+def upload_note_to_s3(username, note_content):
+    if not s3_client:
+        return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
+
+    note_filename = f"{username}_note.txt"
+    s3_note_path = f"{username}/{note_filename}"
+
+    try:
+        s3_client.put_object(
+            Bucket=AWS_S3_BUCKET_NAME,
+            Key=s3_note_path,
+            Body=note_content.encode('utf-8'),
+            ContentType='text/plain'
+        )
+        print(f"Not dosyası S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_note_path}")
+        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_note_path}", None
+    except Exception as e:
+        print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
+        return None, f"S3 not yükleme hatası: {e}"
 
 @app.route('/')
 def home():
@@ -35,87 +74,43 @@ def home():
 def ana():
     return render_template('ana.html')
 
-@app.route('/son', methods=['POST', 'GET'])
+@app.route('/son', methods=['POST'])
 def son():
-    if request.method == 'POST':
-        name = request.form['name']
-        files = request.files.getlist('file')
-        note = request.form['note']
+    username = request.form.get('name')
+    note_content = request.form.get('note')
+    uploaded_files = request.files.getlist('file')
 
-        MAIN_DRIVE_FOLDER_ID = '1Lf7IP2Z2fJ2LQhO0RKHtzVXJiT3amsBM'
+    if not username:
+        flash('Lütfen bir kullanıcı adı girin!', 'error')
+        return redirect(url_for('ana'))
 
-        uploaded_temp_files = []
+    if not s3_client:
+        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
+        return redirect(url_for('ana'))
 
-        try:
-            query = f"name = '{name}' and mimeType = 'application/vnd.google-apps.folder' and '{MAIN_DRIVE_FOLDER_ID}' in parents and trashed = false"
-            results = drive_service.files().list(q=query, fields="files(id, name)").execute()
-            
-            user_folder_id = None
-            if results.get('files'):
-                user_folder_id = results['files'][0]['id']
-                print(f"Drive'da '{name}' klasörü zaten var. ID: {user_folder_id}")
+    if note_content:
+        note_s3_url, note_error = upload_note_to_s3(username, note_content)
+        if note_error:
+            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
+        else:
+            flash('Not başarıyla yüklendi.', 'success')
+
+    for file in uploaded_files:
+        if file and file.filename != '':
+            file_s3_url, file_error = upload_file_to_s3(file, username)
+            if file_error:
+                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
             else:
-                folder_metadata = {
-                    'name': name,
-                    'mimeType': 'application/vnd.google-apps.folder',
-                    'parents': [MAIN_DRIVE_FOLDER_ID]
-                }
-                folder = drive_service.files().create(body=folder_metadata, fields='id').execute()
-                user_folder_id = folder['id']
-                print(f"Drive'da '{name}' klasörü oluşturuldu. ID: {user_folder_id}")
+                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
+        else:
+            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
-            for file in files:
-                if file.filename == '':
-                    continue 
-
-                filename = secure_filename(file.filename)
-                file_path = os.path.join('uploads', filename)
-                
-                try:
-                    file.save(file_path)
-                    uploaded_temp_files.append(file_path)
-
-                    mimetype = file.content_type if file.content_type else 'application/octet-stream'
-
-                    media = MediaFileUpload(file_path, mimetype=mimetype, resumable=True)
-                    file_metadata = {'name': filename, 'parents': [user_folder_id]}
-                    drive_service.files().create(body=file_metadata, media_body=media, fields='id').execute()
-                    print(f"'{filename}' Google Drive'a yüklendi.")
-                except Exception as file_upload_e:
-                    print(f"Hata: '{filename}' yüklenirken bir sorun oluştu: {file_upload_e}")
-                    continue 
-
-            if note:
-                note_filename = f'{name}_note.txt'
-                note_file_path = os.path.join('uploads', note_filename)
-                
-                try:
-                    with open(note_file_path, 'w', encoding='utf-8') as note_file: 
-                        note_file.write(note)
-                    uploaded_temp_files.append(note_file_path)
-
-                    media = MediaFileUpload(note_file_path, mimetype='text/plain', resumable=True)
-                    note_metadata = {'name': note_filename, 'parents': [user_folder_id]}
-                    drive_service.files().create(body=note_metadata, media_body=media, fields='id').execute()
-                    print(f"Not dosyası '{note_filename}' Google Drive'a yüklendi.")
-                except Exception as note_upload_e:
-                    print(f"Hata: Not dosyası yüklenirken bir sorun oluştu: {note_upload_e}")
-
-            return redirect(url_for('home'))
-
-        except Exception as e:
-            print(f"Genel bir hata oluştu: {e}")
-            return "Dosya yükleme sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.", 500
-        finally:
-            for temp_file_path in uploaded_temp_files:
-                if os.path.exists(temp_file_path):
-                    try:
-                        os.remove(temp_file_path)
-                        print(f"Geçici dosya silindi: {temp_file_path}")
-                    except Exception as clean_e:
-                        print(f"Hata: Geçici dosya silinirken sorun oluştu '{temp_file_path}': {clean_e}")
-
-    return render_template('son.html')
+    flash('Tüm işlemler tamamlandı!', 'success')
+    return redirect(url_for('home'))
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    if not os.path.exists(app.config['UPLOAD_FOLDER']):
+        os.makedirs(app.config['UPLOAD_FOLDER'])
+    
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
