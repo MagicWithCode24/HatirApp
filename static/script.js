@@ -11,6 +11,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const recordPanel = document.getElementById('recordPanel');
     const startBtn = document.getElementById('startBtn');
     const stopBtn = document.getElementById('stopBtn');
+    const audioPreviewContainer = document.getElementById('audioPreviewContainer');
     let mediaRecorder;
     let audioChunks = [];
     let audioBlob;
@@ -49,7 +50,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     const audioPreview = document.createElement("audio");
                     audioPreview.controls = true;
                     audioPreview.src = audioUrl;
-                    previewContainer.appendChild(audioPreview);
+
+                    audioPreviewContainer.innerHTML = '';
+                    audioPreviewContainer.appendChild(audioPreview);
                     startBtn.disabled = false;
                     stopBtn.disabled = true;
                 };
