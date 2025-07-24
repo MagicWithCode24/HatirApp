@@ -6,17 +6,15 @@ document.addEventListener("DOMContentLoaded", function () {
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn"); // Buradaki atama hatası düzeltildi!
+    const stopBtn = document.getElementById("stopBtn");
     const audioPreviewContainer = document.getElementById("audioPreviewContainer");
     const audioPlayback = document.getElementById("audioPlayback");
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
-        // Mikrofon paneli her açıldığında/kapandığında önizlemeyi gizle
         audioPreviewContainer.style.display = 'none';
-        audioPlayback.src = ''; // Ses kaynağını temizle
-        // Buton durumlarını sıfırla
+        audioPlayback.src = '';
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
@@ -24,7 +22,6 @@ document.addEventListener("DOMContentLoaded", function () {
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
 
-        // Yeni kayıt başlatıldığında eski önizlemeyi gizle
         audioPreviewContainer.style.display = 'none';
         audioPlayback.src = '';
 
@@ -296,6 +293,9 @@ document.addEventListener("DOMContentLoaded", function () {
             audioPreviewContainer.style.display = 'none';
             audioPlayback.src = '';
             currentAudioBlob = null;
+
+            // Buraya console.log ekledim: allUploadsSuccessful'ın değerini gösterir
+            console.log("Tüm yüklemeler tamamlandı. Başarılı mı?", allUploadsSuccessful);
 
             if (allUploadsSuccessful) {
                 window.location.href = '/son'; 
