@@ -1,29 +1,19 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let currentAudioBlob = null;
 
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
-    const audioPreviewContainer = document.getElementById("audioPreviewContainer");
-    const audioPlayback = document.getElementById("audioPlayback");
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
-        audioPreviewContainer.style.display = 'none';
-        audioPlayback.src = '';
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
     });
 
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
-
-        audioPreviewContainer.style.display = 'none';
-        audioPlayback.src = '';
 
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -38,14 +28,31 @@ document.addEventListener("DOMContentLoaded", function () {
 
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                currentAudioBlob = audioBlob;
-
                 const audioUrl = URL.createObjectURL(audioBlob);
-                audioPlayback.src = audioUrl;
-                audioPreviewContainer.style.display = 'block';
 
-                console.log("Ses kaydı tamamlandı, önizleme hazır.");
-                stream.getTracks().forEach(track => track.stop());
+                const formData = new FormData();
+                formData.append("audio", audioBlob, "recording.wav");
+                formData.append("name", document.querySelector("input[name='name']").value);
+
+                fetch("/upload-audio", {
+                    method: "POST",
+                    body: formData
+                })
+                .then(response => {
+                    // Yanıtın durum kodunu kontrol et
+                    if (response.ok) { // HTTP durumu 200-299 arasında ise başarılıdır
+                        alert("Ses kaydınız başarıyla yüklendi!");
+                        // Sayfa yönlendirmesi sunucu tarafında yapıldığı için burada bir şey yapmaya gerek yok
+                    } else {
+                        // Eğer sunucudan bir hata kodu gelirse (örn: 500)
+                        console.error("Ses yükleme sunucu hatası:", response.status, response.statusText);
+                        alert("Ses kaydınız yüklenemedi. (Sunucu hatası)");
+                    }
+                })
+                .catch(error => {
+                    console.error("Ses yükleme ağ hatası:", error);
+                    alert("Ses kaydı yüklenirken bir sorun oluştu. (Ağ hatası)");
+                });
             });
 
             startBtn.disabled = true;
@@ -71,9 +78,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadProgressText = document.getElementById('uploadProgressText');
     const uploadProgressContainer = document.querySelector('.upload-progress-container');
 
-    const mainForm = document.querySelector('form');
-    const finishBtn = document.querySelector('.finish-btn');
-
     fileInput.addEventListener('change', async () => {
         const files = Array.from(fileInput.files);
         previewContainer.innerHTML = '';
@@ -98,7 +102,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let loadedFilesCount = 0;
         const totalFiles = files.length;
 
-        const createPreviewElement = (file) => {
+        const simulateFileUpload = (file, index) => {
             return new Promise(async resolve => {
                 let previewElement = null;
                 if (file.type.startsWith("image/")) {
@@ -140,11 +144,11 @@ document.addEventListener("DOMContentLoaded", function () {
                         };
                     });
                 }
-                
+
                 loadedFilesCount++;
-                const previewProgressPercentage = (loadedFilesCount / totalFiles) * 100;
-                uploadProgressBar.style.width = `${previewProgressPercentage}%`;
-                uploadProgressText.textContent = `${Math.round(previewProgressPercentage)}%`;
+                const progressPercentage = (loadedFilesCount / totalFiles) * 100;
+                uploadProgressBar.style.width = `${progressPercentage}%`;
+                uploadProgressText.textContent = `${Math.round(progressPercentage)}%`;
 
                 if (previewElement) {
                     if (loadedFilesCount <= maxNormalPreview) {
@@ -179,129 +183,16 @@ document.addEventListener("DOMContentLoaded", function () {
                         extraCountElement.textContent = `+${currentExtraCount + 1}`;
                     }
                 }
+
+                if (loadedFilesCount === totalFiles) {
+                    uploadProgressBar.classList.add('complete');
+                }
                 resolve();
             });
         };
 
         for (let i = 0; i < totalFiles; i++) {
-            await createPreviewElement(files[i]);
-        }
-    });
-
-    mainForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const username = document.querySelector("input[name='name']").value;
-        const note_content = document.querySelector("textarea[name='note']").value;
-        const filesToUpload = Array.from(fileInput.files);
-
-        if (currentAudioBlob) {
-            filesToUpload.push(currentAudioBlob);
-        }
-
-        if (!username) {
-            alert('Lütfen bir kullanıcı adı girin!');
-            return;
-        }
-
-        if (filesToUpload.length === 0 && !note_content) {
-            alert('Lütfen yüklenecek bir dosya, not veya ses kaydı ekleyin!');
-            return;
-        }
-        
-        finishBtn.disabled = true;
-        finishBtn.textContent = 'Yükleniyor...';
-
-        uploadProgressContainer.style.display = 'flex';
-        uploadProgressBar.style.width = '0%';
-        uploadProgressBar.classList.remove('complete');
-        uploadProgressText.textContent = '0%';
-
-        let uploadedItemsCount = 0;
-        const totalItems = filesToUpload.length + (note_content ? 1 : 0);
-        let allUploadsSuccessful = true;
-
-        if (note_content) {
-            const formData = new FormData();
-            formData.append('name', username);
-            formData.append('note', note_content);
-            try {
-                const response = await fetch('/upload_item', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                if (data.success) {
-                    console.log('Not başarıyla yüklendi.');
-                } else {
-                    console.error('Not yüklenirken hata oluştu:', data.error);
-                    allUploadsSuccessful = false;
-                }
-            } catch (error) {
-                console.error('Not yükleme ağ hatası:', error);
-                allUploadsSuccessful = false;
-            } finally {
-                uploadedItemsCount++;
-                const progress = (uploadedItemsCount / totalItems) * 100;
-                uploadProgressBar.style.width = `${progress}%`;
-                uploadProgressText.textContent = `${Math.round(progress)}%`;
-            }
-        }
-
-        for (const item of filesToUpload) {
-            const formData = new FormData();
-            formData.append('name', username);
-
-            let fileName = 'unknown_file';
-
-            if (item instanceof Blob) {
-                formData.append('file', item, `audio_recording_${Date.now()}.wav`);
-                fileName = `audio_recording_${Date.now()}.wav`;
-            } else {
-                formData.append('file', item);
-                fileName = item.name;
-            }
-            
-            try {
-                const response = await fetch('/upload_item', {
-                    method: 'POST',
-                    body: formData
-                });
-                const data = await response.json();
-                if (data.success) {
-                    console.log(`'${fileName}' başarıyla yüklendi.`);
-                } else {
-                    console.error(`'${fileName}' yüklenirken hata oluştu:`, data.error);
-                    allUploadsSuccessful = false;
-                }
-            } catch (error) {
-                console.error(`'${fileName}' yüklenirken ağ hatası oluştu:`, error);
-                allUploadsSuccessful = false;
-            } finally {
-                uploadedItemsCount++;
-                const progress = (uploadedItemsCount / totalItems) * 100;
-                uploadProgressBar.style.width = `${progress}%`;
-                uploadProgressText.textContent = `${Math.round(progress)}%`;
-            }
-        }
-
-        if (uploadedItemsCount === totalItems) {
-            uploadProgressBar.classList.add('complete');
-            finishBtn.disabled = false;
-            finishBtn.textContent = 'Gönder';
-
-            audioPreviewContainer.style.display = 'none';
-            audioPlayback.src = '';
-            currentAudioBlob = null;
-
-            // Buraya console.log ekledim: allUploadsSuccessful'ın değerini gösterir
-            console.log("Tüm yüklemeler tamamlandı. Başarılı mı?", allUploadsSuccessful);
-
-            if (allUploadsSuccessful) {
-                window.location.href = '/son'; 
-            } else {
-                alert('Bazı yüklemeler başarısız oldu. Lütfen konsolu kontrol edin.');
-            }
+            await simulateFileUpload(files[i], i);
         }
     });
 });
