@@ -110,6 +110,28 @@ def son():
 def son_page():
     return render_template('son.html')
 
+@app.route('/upload-audio', methods=['POST'])
+def upload_audio():
+    if 'audio' not in request.files:
+        flash('Ses kaydı bulunamadı!', 'error')
+        return redirect(url_for('ana'))
+
+    audio_file = request.files['audio']
+    username = request.form.get('name')
+    filename = f"{username}_audio.wav"
+    s3_audio_path = f"{username}/{filename}"
+
+    try:
+        s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
+        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
+        print(f"Ses kaydı S3'e yüklendi: {audio_url}")
+        flash(f"Ses kaydı başarıyla yüklendi: {audio_url}", 'success')
+        return redirect(url_for('son'))
+    except Exception as e:
+        print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
+        flash("Ses kaydı yüklenemedi.", 'error')
+        return redirect(url_for('ana'))
+
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
