@@ -11,7 +11,7 @@
 
     <h1>Lütfen İstenilen Bilgileri Giriniz.</h1>
 
-    <form method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data">
+    <form id="mainForm" method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data">
 
         <div class="form">
             <p class="isim">Ad-Soyad</p>
@@ -23,6 +23,10 @@
             <div class="upload-box" onclick="document.getElementById('real-file').click();">
                 <p id="uploadText">Yüklemek için buraya tıklayın</p>
                 <div class="upload-preview" id="uploadPreview"></div>
+                <div id="filePreviewProgressBarContainer" class="file-preview-progress-bar-container">
+                    <div id="filePreviewProgressBar" class="file-preview-progress-bar"></div>
+                    <span id="filePreviewProgressText" class="file-preview-progress-text">0%</span>
+                </div>
             </div>
             <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">
         </div>
@@ -44,6 +48,11 @@
 
             <div id="audioPreview" class="audio-preview"></div>
             
+        </div>
+
+        <div id="uploadProgressBarContainer" class="upload-progress-bar-container">
+            <div id="uploadProgressBar" class="upload-progress-bar"></div>
+            <span id="uploadProgressText" class="upload-progress-text">0%</span>
         </div>
 
         <button class="finish-btn" type="submit" id="submitBtn">Gönder</button>
