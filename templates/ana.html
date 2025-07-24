@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -7,9 +8,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
 </head>
 <body>
+
     <h1>Lütfen İstenilen Bilgileri Giriniz.</h1>
 
     <form method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data">
+
         <div class="form">
             <p class="isim">Ad-Soyad</p>
             <input type="text" name="name" placeholder="Adınızı Ve Soyadınızı Yazınız" maxlength="86" required>
@@ -19,13 +22,9 @@
             <h2>Fotoğraf / Video Yükle</h2>
             <div class="upload-box" onclick="document.getElementById('real-file').click();">
                 <p id="uploadText">Yüklemek için buraya tıklayın</p>
-                <div class="upload-progress-container" style="display: none;">
-                    <div class="upload-progress-bar" id="uploadProgressBar"></div>
-                    <span class="upload-progress-text" id="uploadProgressText">0%</span>
-                </div>
                 <div class="upload-preview" id="uploadPreview"></div>
             </div>
-            <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">        
+            <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">
         </div>
 
         <div class="form">
