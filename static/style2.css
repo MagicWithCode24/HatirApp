@@ -207,17 +207,18 @@ textarea.not-text {
     overflow: hidden;
     transition: opacity 0.3s ease, max-height 0.3s ease;
     display: flex;
+    flex-direction: column;
     gap: 10px;
     font-size: 16px;
     flex-wrap: nowrap;
-    align-items: center;
+    align-items: flex-start;
     justify-content: flex-start;
     min-height: 40px;
 }
 
 .record-panel.active {
     opacity: 1;
-    max-height: 100px;
+    max-height: 250px; /* Yeterli alan sağlamak için artırıldı */
 }
 
 .record-panel button {
@@ -239,6 +240,22 @@ textarea.not-text {
 .record-panel button:hover {
     background-color: #ff9999;
 }
+
+/* YENİ EKLENEN KISIM: Ses Kayıt Butonları İçin Görsel Geri Bildirim */
+.record-panel button#startBtn:disabled {
+    background-color: #cccccc; /* Başlat butonu devre dışı iken gri */
+    cursor: not-allowed;
+}
+
+.record-panel button#stopBtn:enabled {
+    background-color: #ff6666; /* Bitir butonu etkin iken kırmızımsı */
+    color: white;
+}
+.record-panel button#stopBtn:enabled:hover {
+    background-color: #ff3333;
+}
+/* YENİ EKLENEN KISIM SONU */
+
 
 .finish-btn {
     margin-top: 100px;
