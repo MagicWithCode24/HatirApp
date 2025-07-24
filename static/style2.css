@@ -152,7 +152,6 @@ input[type="text"]::placeholder, textarea.not-text::placeholder {
     margin-left: 5px;
 }
 
-
 .not {
     font-size: 24px;
     font-weight: bold;
