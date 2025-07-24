@@ -20,10 +20,6 @@
             <div class="upload-box" onclick="document.getElementById('real-file').click();">
                 <p id="uploadText">Yüklemek için buraya tıklayın</p>
                 <div class="upload-preview" id="uploadPreview"></div>
-                
-                <div id="uploadProgress" class="progress-bar" style="display:none;">
-                    <div id="progressBar" class="progress-bar-inner"></div>
-                </div>
             </div>
             <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">        
         </div>
@@ -42,6 +38,8 @@
                     <button id="stopBtn" disabled type="button">Bitir</button>
                 </div>
             </div>
+
+            <div id="audioPreviewContainer"></div>
         </div>
 
         <button class="finish-btn" type="submit">Gönder</button>
