@@ -104,7 +104,11 @@ def son():
             flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
     flash('Tüm işlemler tamamlandı!', 'success')
-    return redirect(url_for('home'))
+    return redirect(url_for('son'))
+
+@app.route('/son')
+def son_page():
+    return render_template('son.html')
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
