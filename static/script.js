@@ -34,11 +34,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const formData = new FormData();
             formData.append("audio", audioBlob, "recording.wav");
+            formData.append("name", document.querySelector("input[name='name']").value); // Kullanıcı adı ekleniyor.
 
             fetch("/upload-audio", {
                 method: "POST",
                 body: formData
-            });
+            }).then(response => response.json())
+              .then(data => {
+                  if (data.success) {
+                      alert("Ses kaydınız başarıyla yüklendi!");
+                  } else {
+                      alert("Ses kaydınız yüklenemedi.");
+                  }
+              });
         });
 
         startBtn.disabled = true;
