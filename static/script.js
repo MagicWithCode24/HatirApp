@@ -1,65 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // === SES KAYDI ===
-    let mediaRecorder;
-    let audioChunks = [];
-
-    const micBtn = document.getElementById("micBtn");
-    const recordPanel = document.getElementById("recordPanel");
-    const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-
-    const form = document.querySelector("form");
-
-    micBtn.addEventListener("click", (e) => {
-        e.preventDefault();
-        recordPanel.classList.toggle("active");
-    });
-
-    startBtn.addEventListener("click", async (e) => {
-        e.preventDefault(); 
-
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        mediaRecorder.start();
-
-        audioChunks = [];
-
-        mediaRecorder.addEventListener("dataavailable", event => {
-            audioChunks.push(event.data);
-        });
-
-        mediaRecorder.addEventListener("stop", () => {
-            const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-
-            const formData = new FormData();
-            formData.append("audio", audioBlob, "recording.wav");
-            formData.append("name", document.querySelector("input[name='name']").value); // Kullanıcı adı ekleniyor.
-
-            fetch("/upload-audio", {
-                method: "POST",
-                body: formData
-            }).then(response => response.json())
-              .then(data => {
-                  if (data.success) {
-                      alert("Ses kaydınız başarıyla yüklendi!");
-                  } else {
-                      alert("Ses kaydınız yüklenemedi.");
-                  }
-              });
-        });
-
-        startBtn.disabled = true;
-        stopBtn.disabled = false;
-    });
-
-    stopBtn.addEventListener("click", () => {
-        mediaRecorder.stop();
-        startBtn.disabled = false;
-        stopBtn.disabled = true;
-    });
-
-    // === FOTOĞRAF ÖNİZLEME ===
+    // === FOTOĞRAF VE VİDEO ÖNİZLEME ===
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -67,10 +7,11 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         const files = fileInput.files;
         const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
+        const videoFiles = Array.from(files).filter(file => file.type.startsWith("video/"));
 
         previewContainer.innerHTML = '';
 
-        if (imageFiles.length > 0) {
+        if (imageFiles.length > 0 || videoFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
         } else {
@@ -81,6 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
 
+        // Fotoğrafların önizlemesini ekleyelim
         imageFiles.slice(0, maxNormalPreview).forEach(file => {
             const reader = new FileReader();
             reader.onload = function (e) {
@@ -91,11 +33,31 @@ document.addEventListener("DOMContentLoaded", function () {
             reader.readAsDataURL(file);
         });
 
-        const remainingImagesForOverlay = imageFiles.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview);
-        const totalExtraCount = imageFiles.length - maxNormalPreview;
+        // Videoların kapaklarını alalım
+        videoFiles.slice(0, maxNormalPreview).forEach(file => {
+            const video = document.createElement("video");
+            video.src = URL.createObjectURL(file);
+            video.load();
+            video.onloadeddata = function () {
+                const canvas = document.createElement("canvas");
+                const ctx = canvas.getContext("2d");
+                canvas.width = 80;  // Boyutunu ayarlayabilirsiniz
+                canvas.height = 100;
+
+                // Videonun ilk karesini çekiyoruz
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                const img = new Image();
+                img.src = canvas.toDataURL();
+                previewContainer.appendChild(img);
+            };
+        });
+
+        // Eğer fotoğraf ve video karışıksa, 3. resimleri veya video kapaklarını kaydırma ekleyelim
+        const remainingFiles = [...imageFiles.slice(maxNormalPreview), ...videoFiles.slice(maxNormalPreview)];
+        const totalExtraCount = remainingFiles.length;
         const shownOverlayCount = Math.min(maxOverlayPreview, totalExtraCount);
         const remainingHiddenCount = totalExtraCount;
-        const extraCountToShow = imageFiles.length - maxNormalPreview;
+        const extraCountToShow = remainingFiles.length;
 
         if (totalExtraCount > 0) {
             const overlayStackContainer = document.createElement("div");
@@ -103,14 +65,14 @@ document.addEventListener("DOMContentLoaded", function () {
             
             const slideDistance = 3.75;
 
-            remainingImagesForOverlay.forEach((file, index) => { 
+            remainingFiles.forEach((file, index) => { 
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const img = document.createElement("img");
                     img.src = e.target.result;
                     img.classList.add("overlay");
                     img.style.left = `${index * slideDistance}px`;
-                    img.style.zIndex = remainingImagesForOverlay.length - index;
+                    img.style.zIndex = remainingFiles.length - index;
                     overlayStackContainer.appendChild(img);
                 };
                 reader.readAsDataURL(file);
