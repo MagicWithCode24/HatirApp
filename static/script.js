@@ -41,12 +41,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // alert("Ses kaydınız başarıyla yüklendi!");  // ← ARTIK YOK
-            
                         // Ses önizleme bölümü oluştur
                         const previewArea = document.getElementById("audioPreview");
-                        previewArea.id = "audioPreview";
-                        previewArea.innerHTML = "";  // varsa eski içerikleri temizle
+                        // previewArea.id = "audioPreview"; // Bu satır zaten ID'ye göre seçildiği için gereksiz
+                        previewArea.innerHTML = ""; // varsa eski içerikleri temizle
             
                         const audio = document.createElement("audio");
                         audio.controls = true;
@@ -58,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         previewArea.appendChild(label);
                         previewArea.appendChild(audio);
             
-                        document.body.appendChild(previewArea);
+                        // document.body.appendChild(previewArea); // <-- Bu satır kaldırıldı
                     } else {
                         alert("Ses kaydınız yüklenemedi.");
                     }
