@@ -6,6 +6,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
+    // Yeni eklenenler
+    const submitBtn = document.getElementById("submitBtn"); // Gönder butonunu seçiyoruz
+    const mainForm = document.querySelector("form"); // Formu seçiyoruz
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -41,10 +44,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        // Ses önizleme bölümü oluştur
                         const previewArea = document.getElementById("audioPreview");
-                        // previewArea.id = "audioPreview"; // Bu satır zaten ID'ye göre seçildiği için gereksiz
-                        previewArea.innerHTML = ""; // varsa eski içerikleri temizle
+                        previewArea.innerHTML = ""; 
             
                         const audio = document.createElement("audio");
                         audio.controls = true;
@@ -55,8 +56,6 @@ document.addEventListener("DOMContentLoaded", function () {
             
                         previewArea.appendChild(label);
                         previewArea.appendChild(audio);
-            
-                        // document.body.appendChild(previewArea); // <-- Bu satır kaldırıldı
                     } else {
                         alert("Ses kaydınız yüklenemedi.");
                     }
@@ -177,5 +176,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
+    });
+
+    // Form gönderildiğinde buton metnini değiştirme
+    mainForm.addEventListener('submit', function() {
+        if (submitBtn) {
+            submitBtn.textContent = 'Yükleniyor...';
+            submitBtn.disabled = true; // Kullanıcının tekrar basmasını engelle
+        }
     });
 });
