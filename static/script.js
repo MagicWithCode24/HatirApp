@@ -3,7 +3,64 @@ document.addEventListener("DOMContentLoaded", function () {
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
+    const progressBar = document.getElementById('progressBar');
+    const uploadProgress = document.getElementById('uploadProgress');
 
+    // === SES KAYDI ===
+    const micBtn = document.getElementById('micBtn');
+    const recordPanel = document.getElementById('recordPanel');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob;
+    let audioUrl;
+    let audio;
+
+    micBtn.addEventListener('click', () => {
+        recordPanel.classList.toggle("active");
+    });
+
+    startBtn.addEventListener('click', () => {
+        startRecording();
+    });
+
+    stopBtn.addEventListener('click', () => {
+        stopRecording();
+    });
+
+    function startRecording() {
+        audioChunks = [];
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.start();
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+
+                mediaRecorder.ondataavailable = event => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    audioUrl = URL.createObjectURL(audioBlob);
+                    audio = new Audio(audioUrl);
+                    const audioPreview = document.createElement("audio");
+                    audioPreview.controls = true;
+                    audioPreview.src = audioUrl;
+                    previewContainer.appendChild(audioPreview);
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                };
+            });
+    }
+
+    function stopRecording() {
+        mediaRecorder.stop();
+    }
+
+    // === FOTOĞRAF VE VİDEO ÖNİZLEME ===
     fileInput.addEventListener('change', () => {
         const files = fileInput.files;
         const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
@@ -14,16 +71,22 @@ document.addEventListener("DOMContentLoaded", function () {
         if (imageFiles.length > 0 || videoFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
+            uploadProgress.style.display = "block";
         } else {
             uploadText.style.display = "block";
             previewContainer.style.minHeight = "auto";
+            uploadProgress.style.display = "none";
         }
 
-        const maxNormalPreview = 2;
-        const maxOverlayPreview = 3;
+        const totalFiles = imageFiles.length + videoFiles.length;
+        let uploadedFiles = 0;
 
-        // Fotoğrafların önizlemesini ekleyelim
-        imageFiles.slice(0, maxNormalPreview).forEach(file => {
+        const updateProgressBar = () => {
+            const progress = (uploadedFiles / totalFiles) * 100;
+            progressBar.style.width = `${progress}%`;
+        };
+
+        imageFiles.slice(0, 2).forEach(file => {
             const reader = new FileReader();
             reader.onload = function (e) {
                 const img = document.createElement("img");
@@ -33,18 +96,16 @@ document.addEventListener("DOMContentLoaded", function () {
             reader.readAsDataURL(file);
         });
 
-        // Videoların kapaklarını alalım
-        videoFiles.slice(0, maxNormalPreview).forEach(file => {
+        videoFiles.slice(0, 2).forEach(file => {
             const video = document.createElement("video");
             video.src = URL.createObjectURL(file);
             video.load();
             video.onloadeddata = function () {
                 const canvas = document.createElement("canvas");
                 const ctx = canvas.getContext("2d");
-                canvas.width = 80;  // Boyutunu ayarlayabilirsiniz
+                canvas.width = 80;
                 canvas.height = 100;
 
-                // Videonun ilk karesini çekiyoruz
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const img = new Image();
                 img.src = canvas.toDataURL();
@@ -52,17 +113,13 @@ document.addEventListener("DOMContentLoaded", function () {
             };
         });
 
-        // Eğer fotoğraf ve video karışıksa, 3. resimleri veya video kapaklarını kaydırma ekleyelim
-        const remainingFiles = [...imageFiles.slice(maxNormalPreview), ...videoFiles.slice(maxNormalPreview)];
+        const remainingFiles = [...imageFiles.slice(2), ...videoFiles.slice(2)];
         const totalExtraCount = remainingFiles.length;
-        const shownOverlayCount = Math.min(maxOverlayPreview, totalExtraCount);
-        const remainingHiddenCount = totalExtraCount;
-        const extraCountToShow = remainingFiles.length;
 
         if (totalExtraCount > 0) {
             const overlayStackContainer = document.createElement("div");
             overlayStackContainer.className = "overlay-stack-container";
-            
+
             const slideDistance = 3.75;
 
             remainingFiles.forEach((file, index) => { 
@@ -78,14 +135,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 reader.readAsDataURL(file);
             });
 
-            if (extraCountToShow > 0) {
-                const extra = document.createElement("div");
-                extra.className = "extra-count";
-                extra.textContent = `+${extraCountToShow}`;
-                overlayStackContainer.appendChild(extra);
-            }
-
             previewContainer.appendChild(overlayStackContainer);
         }
+
+        imageFiles.concat(videoFiles).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function () {
+                uploadedFiles++;
+                updateProgressBar();
+            };
+            reader.readAsDataURL(file);
+        });
     });
 });
