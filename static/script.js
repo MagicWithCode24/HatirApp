@@ -44,7 +44,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         // alert("Ses kaydınız başarıyla yüklendi!");  // ← ARTIK YOK
             
                         // Ses önizleme bölümü oluştur
-                        const previewArea = document.getElementById("audioPreview") || document.createElement("div");
+                        const previewArea = document.getElementById("audioPreview");
                         previewArea.id = "audioPreview";
                         previewArea.innerHTML = "";  // varsa eski içerikleri temizle
             
