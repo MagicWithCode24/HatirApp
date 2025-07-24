@@ -286,3 +286,64 @@ textarea.not-text {
     font-size: 20px;
     margin-top: auto;
 }
+
+.file-preview-progress-bar-container {
+    width: 95%;
+    height: 15px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    display: none;
+    position: relative;
+}
+
+.file-preview-progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #6a0dad;
+    transition: width 0.3s ease;
+    border-radius: 5px 0 0 5px;
+}
+
+.file-preview-progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #fff;
+    font-size: 10px;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+}
+
+.upload-progress-bar-container {
+    width: 250px;
+    height: 25px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 20px auto 10px auto;
+    border: 1px solid #ccc;
+    display: none;
+    position: relative;
+}
+
+.upload-progress-bar {
+    height: 100%;
+    width: 0%;
+    background-color: #4CAF50;
+    transition: width 0.3s ease;
+    border-radius: 5px 0 0 5px;
+}
+
+.upload-progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #333;
+    font-size: 14px;
+    font-weight: bold;
+}
