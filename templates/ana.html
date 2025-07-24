@@ -19,6 +19,10 @@
             <h2>Fotoğraf / Video Yükle</h2>
             <div class="upload-box" onclick="document.getElementById('real-file').click();">
                 <p id="uploadText">Yüklemek için buraya tıklayın</p>
+                <div class="upload-progress-container" style="display: none;">
+                    <div class="upload-progress-bar" id="uploadProgressBar"></div>
+                    <span class="upload-progress-text" id="uploadProgressText">0%</span>
+                </div>
                 <div class="upload-preview" id="uploadPreview"></div>
             </div>
             <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">        
