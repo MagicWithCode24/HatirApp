@@ -1,12 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // === FOTOĞRAF VE VİDEO ÖNİZLEME ===
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
     const progressBar = document.getElementById('progressBar');
     const uploadProgress = document.getElementById('uploadProgress');
 
-    // === SES KAYDI ===
     const micBtn = document.getElementById('micBtn');
     const recordPanel = document.getElementById('recordPanel');
     const startBtn = document.getElementById('startBtn');
@@ -63,7 +61,6 @@ document.addEventListener("DOMContentLoaded", function () {
         mediaRecorder.stop();
     }
 
-    // === FOTOĞRAF VE VİDEO ÖNİZLEME ===
     fileInput.addEventListener('change', () => {
         const files = fileInput.files;
         const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
@@ -94,6 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
             reader.onload = function (e) {
                 const img = document.createElement("img");
                 img.src = e.target.result;
+                img.style.maxWidth = "100px"; // Görselleri daha küçük yapmak için stil eklenebilir
                 previewContainer.appendChild(img);
             };
             reader.readAsDataURL(file);
@@ -108,7 +106,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 const ctx = canvas.getContext("2d");
                 canvas.width = 80;
                 canvas.height = 100;
-
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const img = new Image();
                 img.src = canvas.toDataURL();
