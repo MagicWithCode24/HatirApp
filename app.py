@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify # jsonify eklendi
 from werkzeug.utils import secure_filename
 import boto3
 from botocore.client import Config
@@ -72,65 +72,67 @@ def home():
 def ana():
     return render_template('ana.html')
 
-@app.route('/son', methods=['POST'])
-def son():
+# Yeni AJAX endpoint'i: Tek dosya veya not yüklemesi için
+@app.route('/upload_item', methods=['POST'])
+def upload_item():
     username = request.form.get('name')
-    note_content = request.form.get('note')
-    uploaded_files = request.files.getlist('file')
-
     if not username:
-        flash('Lütfen bir kullanıcı adı girin!', 'error')
-        return redirect(url_for('ana'))
+        return jsonify({'success': False, 'error': 'Kullanıcı adı gerekli.'}), 400
 
-    if not s3_client:
-        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
-        return redirect(url_for('ana'))
+    if 'file' in request.files:
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'success': False, 'error': 'Boş dosya adı.'}), 400
+        
+        file_s3_url, file_error = upload_file_to_s3(file, username)
+        if file_error:
+            return jsonify({'success': False, 'error': file_error}), 500
+        else:
+            return jsonify({'success': True, 'message': f"'{file.filename}' başarıyla yüklendi."}), 200
+    
+    elif 'note' in request.form:
+        note_content = request.form.get('note')
+        if not note_content:
+            return jsonify({'success': False, 'error': 'Boş not içeriği.'}), 400
 
-    if note_content:
         note_s3_url, note_error = upload_note_to_s3(username, note_content)
         if note_error:
-            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
+            return jsonify({'success': False, 'error': note_error}), 500
         else:
-            flash('Not başarıyla yüklendi.', 'success')
+            return jsonify({'success': True, 'message': 'Not başarıyla yüklendi.'}), 200
+    else:
+        return jsonify({'success': False, 'error': 'Geçersiz istek. Dosya veya not bulunamadı.'}), 400
 
-    for file in uploaded_files:
-        if file and file.filename != '':
-            file_s3_url, file_error = upload_file_to_s3(file, username)
-            if file_error:
-                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
-            else:
-                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
-        else:
-            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
-    flash('Tüm işlemler tamamlandı!', 'success')
-    return redirect(url_for('son'))
-
-@app.route('/son')
-def son_page():
+# Bu rota artık sadece yönlendirme alacak ve flash mesajlarını gösterecek.
+# Dosya ve not yüklemesi /upload_item AJAX endpoint'i üzerinden yapılacak.
+@app.route('/son', methods=['GET']) # Sadece GET isteklerini kabul et
+def son():
     return render_template('son.html')
+
 
 @app.route('/upload-audio', methods=['POST'])
 def upload_audio():
     if 'audio' not in request.files:
-        flash('Ses kaydı bulunamadı!', 'error')
-        return redirect(url_for('ana'))
+        return jsonify({'success': False, 'error': 'Ses kaydı bulunamadı!'}), 400
 
     audio_file = request.files['audio']
     username = request.form.get('name')
-    filename = f"{username}_audio.wav"
+    
+    if not username:
+        return jsonify({'success': False, 'error': 'Kullanıcı adı gerekli!'}), 400
+
+    filename = secure_filename(audio_file.filename) # Güvenli dosya adı kullanımı
     s3_audio_path = f"{username}/{filename}"
 
     try:
         s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
         audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
         print(f"Ses kaydı S3'e yüklendi: {audio_url}")
-        flash(f"Ses kaydı başarıyla yüklendi: {audio_url}", 'success')
-        return redirect(url_for('son'))
+        return jsonify({'success': True, 'message': 'Ses kaydı başarıyla yüklendi.', 'url': audio_url}), 200
     except Exception as e:
         print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
-        flash("Ses kaydı yüklenemedi.", 'error')
-        return redirect(url_for('ana'))
+        return jsonify({'success': False, 'error': f"Ses kaydı yüklenirken hata oluştu: {e}"}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
