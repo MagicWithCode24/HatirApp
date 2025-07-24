@@ -12,7 +12,7 @@
     <form method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data">
         <div class="form">
             <p class="isim">Ad-Soyad</p>
-            <input type="text" name="name" placeholder="Adınızı Ve Soyadınızı Yazınız" maxlength="86">
+            <input type="text" name="name" placeholder="Adınızı Ve Soyadınızı Yazınız" maxlength="86" required>
         </div>
 
         <div class="upload-area">
@@ -31,11 +31,11 @@
             </div>
 
             <div class="record-actions">
-                <button id="micBtn" class="mic-button" title="Ses Kaydı Başlat">🎤</button>
+                <button id="micBtn" class="mic-button" title="Ses Kaydı Başlat" type="button">🎤</button>
 
                 <div id="recordPanel" class="record-panel">
-                    <button id="startBtn">Başlat</button>
-                    <button id="stopBtn" disabled>Bitir</button>
+                    <button id="startBtn" type="button">Başlat</button>
+                    <button id="stopBtn" disabled type="button">Bitir</button>
                 </div>
             </div>
         </div>
