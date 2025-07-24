@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 import boto3
 from botocore.client import Config
@@ -113,8 +113,7 @@ def son_page():
 @app.route('/upload-audio', methods=['POST'])
 def upload_audio():
     if 'audio' not in request.files:
-        flash('Ses kaydı bulunamadı!', 'error')
-        return redirect(url_for('ana'))
+        return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
 
     audio_file = request.files['audio']
     username = request.form.get('name')
@@ -125,12 +124,10 @@ def upload_audio():
         s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
         audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
         print(f"Ses kaydı S3'e yüklendi: {audio_url}")
-        flash(f"Ses kaydı başarıyla yüklendi: {audio_url}", 'success')
-        return redirect(url_for('son'))
+        return jsonify(success=True, url=audio_url), 200
     except Exception as e:
         print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
-        flash("Ses kaydı yüklenemedi.", 'error')
-        return redirect(url_for('ana'))
+        return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
