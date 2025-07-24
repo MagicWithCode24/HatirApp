@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify # jsonify eklendi
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from werkzeug.utils import secure_filename
 import boto3
 from botocore.client import Config
@@ -72,7 +72,6 @@ def home():
 def ana():
     return render_template('ana.html')
 
-# Yeni AJAX endpoint'i: Tek dosya veya not yüklemesi için
 @app.route('/upload_item', methods=['POST'])
 def upload_item():
     username = request.form.get('name')
@@ -103,13 +102,9 @@ def upload_item():
     else:
         return jsonify({'success': False, 'error': 'Geçersiz istek. Dosya veya not bulunamadı.'}), 400
 
-
-# Bu rota artık sadece yönlendirme alacak ve flash mesajlarını gösterecek.
-# Dosya ve not yüklemesi /upload_item AJAX endpoint'i üzerinden yapılacak.
-@app.route('/son', methods=['GET']) # Sadece GET isteklerini kabul et
+@app.route('/son', methods=['GET'])
 def son():
     return render_template('son.html')
-
 
 @app.route('/upload-audio', methods=['POST'])
 def upload_audio():
@@ -122,7 +117,7 @@ def upload_audio():
     if not username:
         return jsonify({'success': False, 'error': 'Kullanıcı adı gerekli!'}), 400
 
-    filename = secure_filename(audio_file.filename) # Güvenli dosya adı kullanımı
+    filename = secure_filename(audio_file.filename)
     s3_audio_path = f"{username}/{filename}"
 
     try:
