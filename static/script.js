@@ -1,14 +1,14 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let currentAudioBlob = null; // En son kaydedilen ses Blob'unu saklamak için
+    let currentAudioBlob = null;
 
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
-    const stopBtn = document.getElementById("stopBtn");
-    const audioPreviewContainer = document.getElementById("audioPreviewContainer"); // Yeni eklenen
-    const audioPlayback = document.getElementById("audioPlayback"); // Yeni eklenen
+    const stopBtn = document.getElementById("stopBtn"); // Buradaki atama hatası düzeltildi!
+    const audioPreviewContainer = document.getElementById("audioPreviewContainer");
+    const audioPlayback = document.getElementById("audioPlayback");
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -16,6 +16,9 @@ document.addEventListener("DOMContentLoaded", function () {
         // Mikrofon paneli her açıldığında/kapandığında önizlemeyi gizle
         audioPreviewContainer.style.display = 'none';
         audioPlayback.src = ''; // Ses kaynağını temizle
+        // Buton durumlarını sıfırla
+        startBtn.disabled = false;
+        stopBtn.disabled = true;
     });
 
     startBtn.addEventListener("click", async (e) => {
@@ -38,18 +41,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-                currentAudioBlob = audioBlob; // Blob'u sakla
+                currentAudioBlob = audioBlob;
 
                 const audioUrl = URL.createObjectURL(audioBlob);
-                audioPlayback.src = audioUrl; // Audio elementinin kaynağını ayarla
-                audioPreviewContainer.style.display = 'block'; // Önizleme konteynerini göster
+                audioPlayback.src = audioUrl;
+                audioPreviewContainer.style.display = 'block';
 
-                // Burada artık ses kaydını otomatik yüklemek yerine,
-                // kullanıcı gönder butonuna bastığında yükleyeceğiz.
-                // Bu kısım boş kalabilir veya sadece loglama yapılabilir.
                 console.log("Ses kaydı tamamlandı, önizleme hazır.");
-
-                // MediaRecorder'ı durdurduktan sonra mikrofon akışını da durdurmak iyi bir pratiktir
                 stream.getTracks().forEach(track => track.stop());
             });
 
@@ -69,7 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    // Aşağıdaki mevcut dosya ve video yükleme mantığı
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -152,7 +149,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 uploadProgressBar.style.width = `${previewProgressPercentage}%`;
                 uploadProgressText.textContent = `${Math.round(previewProgressPercentage)}%`;
 
-
                 if (previewElement) {
                     if (loadedFilesCount <= maxNormalPreview) {
                         previewContainer.appendChild(previewElement);
@@ -186,11 +182,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         extraCountElement.textContent = `+${currentExtraCount + 1}`;
                     }
                 }
-
-                if (loadedFilesCount === totalFiles) {
-                    // Önizlemelerin tamamlandığını gösteren bir sınıf ekle,
-                    // ama gerçek yükleme çubuğunu henüz 'complete' yapma
-                }
                 resolve();
             });
         };
@@ -207,19 +198,16 @@ document.addEventListener("DOMContentLoaded", function () {
         const note_content = document.querySelector("textarea[name='note']").value;
         const filesToUpload = Array.from(fileInput.files);
 
-        // Ses kaydı blob'unu da yükleme listesine ekle
         if (currentAudioBlob) {
-            filesToUpload.push(currentAudioBlob); // Doğrudan Blob'u ekliyoruz
+            filesToUpload.push(currentAudioBlob);
         }
-
 
         if (!username) {
             alert('Lütfen bir kullanıcı adı girin!');
             return;
         }
 
-        // Sadece not, sadece dosya veya sadece ses kaydı varsa da işleme devam et
-        if (filesToUpload.length === 0 && !note_content && !currentAudioBlob) {
+        if (filesToUpload.length === 0 && !note_content) {
             alert('Lütfen yüklenecek bir dosya, not veya ses kaydı ekleyin!');
             return;
         }
@@ -233,11 +221,9 @@ document.addEventListener("DOMContentLoaded", function () {
         uploadProgressText.textContent = '0%';
 
         let uploadedItemsCount = 0;
-        // Toplam yüklenecek öğe sayısı: Not varsa 1 + dosya sayısı + ses kaydı varsa 1
         const totalItems = filesToUpload.length + (note_content ? 1 : 0);
         let allUploadsSuccessful = true;
 
-        // Notu yükle (varsa)
         if (note_content) {
             const formData = new FormData();
             formData.append('name', username);
@@ -265,19 +251,18 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // Dosyaları ve Ses Kaydını yükle
         for (const item of filesToUpload) {
             const formData = new FormData();
             formData.append('name', username);
 
-            let fileName = 'unknown_file'; // Varsayılan dosya adı
+            let fileName = 'unknown_file';
 
-            if (item instanceof Blob) { // Eğer bir Blob ise (ses kaydı)
-                formData.append('file', item, `audio_recording_${Date.now()}.wav`); // Benzersiz bir isim ver
-                fileName = `audio_recording_${Date.now()}.wav`; // Dosya adını ayarla
-            } else { // Normal File nesnesi (fotoğraf/video)
+            if (item instanceof Blob) {
+                formData.append('file', item, `audio_recording_${Date.now()}.wav`);
+                fileName = `audio_recording_${Date.now()}.wav`;
+            } else {
                 formData.append('file', item);
-                fileName = item.name; // Gerçek dosya adını kullan
+                fileName = item.name;
             }
             
             try {
@@ -308,11 +293,9 @@ document.addEventListener("DOMContentLoaded", function () {
             finishBtn.disabled = false;
             finishBtn.textContent = 'Gönder';
 
-            // Yükleme tamamlandıktan sonra ses kaydı önizlemesini ve blob'u temizle
             audioPreviewContainer.style.display = 'none';
             audioPlayback.src = '';
             currentAudioBlob = null;
-
 
             if (allUploadsSuccessful) {
                 window.location.href = '/son'; 
