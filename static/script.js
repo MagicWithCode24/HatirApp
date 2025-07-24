@@ -8,11 +8,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
 
-    micBtn.addEventListener("click", () => {
+    const form = document.querySelector("form");
+
+    micBtn.addEventListener("click", (e) => {
+        e.preventDefault();
         recordPanel.classList.toggle("active");
     });
 
-    startBtn.addEventListener("click", async () => {
+    startBtn.addEventListener("click", async (e) => {
+        e.preventDefault(); 
+
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         mediaRecorder = new MediaRecorder(stream);
         mediaRecorder.start();
