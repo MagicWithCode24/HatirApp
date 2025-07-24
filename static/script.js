@@ -29,11 +29,11 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-
+            
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
-
+            
                 fetch("/upload-audio", {
                     method: "POST",
                     body: formData
@@ -41,7 +41,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        alert("Ses kaydınız başarıyla yüklendi!");
+                        // alert("Ses kaydınız başarıyla yüklendi!");  // ← ARTIK YOK
+            
+                        // Ses önizleme bölümü oluştur
+                        const previewArea = document.getElementById("audioPreview") || document.createElement("div");
+                        previewArea.id = "audioPreview";
+                        previewArea.innerHTML = "";  // varsa eski içerikleri temizle
+            
+                        const audio = document.createElement("audio");
+                        audio.controls = true;
+                        audio.src = audioUrl;
+            
+                        const label = document.createElement("p");
+                        label.textContent = "Kaydınız:";
+            
+                        previewArea.appendChild(label);
+                        previewArea.appendChild(audio);
+            
+                        document.body.appendChild(previewArea);
                     } else {
                         alert("Ses kaydınız yüklenemedi.");
                     }
