@@ -12,7 +12,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
-AWS_S3_REGION = os.environ.get('AWS_S3_REGION')
+AWS_S3_REGION = os.environ.get('AWS_S3_REGION', 'eu-north-1')
 
 s3_client = None
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3_REGION:
