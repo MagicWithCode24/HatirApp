@@ -114,7 +114,7 @@ def son_page():
 def upload_audio():
     if 'audio' not in request.files:
         return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
-
+    
     audio_file = request.files['audio']
     username = request.form.get('name')
     if not username:
