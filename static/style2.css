@@ -271,3 +271,21 @@ textarea.not-text {
     font-size: 20px;
     margin-top: auto;
 }
+
+#filePreviewProgressBarContainer,
+#uploadProgressBarContainer {
+    margin-top: 10px;
+}
+
+#filePreviewProgressBar,
+#uploadProgressBar {
+    height: 6px;
+    width: 0%;
+    transition: width 0.4s ease;
+}
+
+#filePreviewProgressText,
+#uploadProgressText {
+    margin-top: 5px;
+    font-size: 14px;
+}
