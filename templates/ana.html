@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -20,8 +21,12 @@
             <div class="upload-box" onclick="document.getElementById('real-file').click();">
                 <p id="uploadText">Yüklemek için buraya tıklayın</p>
                 <div class="upload-preview" id="uploadPreview"></div>
+                <div id="filePreviewProgressBarContainer" style="display:none;">
+                    <div id="filePreviewProgressBar"></div>
+                    <div id="filePreviewProgressText"></div>
+                </div>
             </div>
-            <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">        
+            <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">
         </div>
 
         <div class="form">
@@ -32,12 +37,17 @@
 
             <div class="record-actions">
                 <button id="micBtn" class="mic-button" title="Ses Kaydı Başlat" type="button">🎤</button>
-
                 <div id="recordPanel" class="record-panel">
                     <button id="startBtn" type="button">Başlat</button>
                     <button id="stopBtn" disabled type="button">Bitir</button>
                 </div>
+                <div id="audioPreview"></div>
             </div>
+        </div>
+
+        <div id="uploadProgressBarContainer" style="display:none;">
+            <div id="uploadProgressBar"></div>
+            <div id="uploadProgressText"></div>
         </div>
 
         <button class="finish-btn" id="submitBtn" type="submit">Gönder</button>
@@ -49,6 +59,4 @@
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
-
 </html>
-
