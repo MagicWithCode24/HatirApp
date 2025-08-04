@@ -1,6 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
+    let selectedFiles = [];
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -106,6 +107,12 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'none';
         }
 
+        files.forEach(file => {
+            if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
+                selectedFiles.push(file);
+            }
+        });
+
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
 
@@ -114,11 +121,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const updateFilePreviewProgress = () => {
             loadedCount++;
-            const percentComplete = (loadedCount / files.length) * 100;
+            const percentComplete = (loadedCount / selectedFiles.length) * 100;
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
 
-            if (loadedCount === files.length) {
+            if (loadedCount === selectedFiles.length) {
                 filePreviewProgressBar.style.backgroundColor = '#4CAF50'; 
                 filePreviewProgressText.textContent = 'Tamamlandı!';
                 setTimeout(() => {
@@ -128,8 +135,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
-
-        files.forEach(file => {
+        selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
                     const reader = new FileReader();
@@ -223,6 +229,10 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const formData = new FormData(mainForm); 
+
+        selectedFiles.forEach(file => {
+            formData.append("file", file);
+        });
 
         const xhr = new XMLHttpRequest();
 
