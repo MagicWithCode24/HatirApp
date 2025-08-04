@@ -104,7 +104,7 @@ def son():
             flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
     flash('Tüm işlemler tamamlandı!', 'success')
-    return redirect(url_for('son'))
+    return redirect(url_for('son_page'))
 
 @app.route('/son')
 def son_page():
@@ -114,9 +114,12 @@ def son_page():
 def upload_audio():
     if 'audio' not in request.files:
         return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
-
+    
     audio_file = request.files['audio']
     username = request.form.get('name')
+    if not username:
+        return jsonify(success=False, error="Kullanıcı adı eksik."), 400
+
     filename = f"{username}_audio.wav"
     s3_audio_path = f"{username}/{filename}"
 
