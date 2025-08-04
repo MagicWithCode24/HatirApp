@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let selectedFiles = [];
+    let selectedFiles = []; // Dosyaların saklanacağı dizi
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -107,6 +107,7 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'none';
         }
 
+        // Seçilen yeni dosyaları mevcut listeye ekle
         files.forEach(file => {
             if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
                 selectedFiles.push(file);
@@ -135,6 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
+        // Dosya tipine göre önizleme işlemi
         selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
@@ -183,6 +185,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+        // Önizlemeleri oluştur
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
 
@@ -230,6 +233,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const formData = new FormData(mainForm); 
 
+        // Seçilen dosyalar da form verilerine ekleniyor
         selectedFiles.forEach(file => {
             formData.append("file", file);
         });
