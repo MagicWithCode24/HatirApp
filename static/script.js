@@ -93,7 +93,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const files = Array.from(fileInput.files);
-        previewContainer.innerHTML = '';
+        previewContainer.innerHTML = ''; // Eski önizlemeleri temizle
 
         if (files.length > 0) {
             uploadText.style.display = "none";
@@ -107,12 +107,8 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'none';
         }
 
-        // Seçilen yeni dosyaları mevcut listeye ekle
-        files.forEach(file => {
-            if (!selectedFiles.some(f => f.name === file.name && f.size === file.size)) {
-                selectedFiles.push(file);
-            }
-        });
+        // Yeni dosyaları eklerken önceki dosyaları temizleyin
+        selectedFiles = [...selectedFiles, ...files];
 
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
