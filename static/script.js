@@ -6,8 +6,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
-    const submitBtn = document.getElementById("submitBtn"); 
-    const mainForm = document.getElementById("mainForm"); 
+    const submitBtn = document.getElementById("submitBtn");
+    const mainForm = document.getElementById("mainForm");
     const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
     const uploadProgressBar = document.getElementById("uploadProgressBar");
     const uploadProgressText = document.getElementById("uploadProgressText");
@@ -37,11 +37,11 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-            
+
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
-            
+
                 fetch("/upload-audio", {
                     method: "POST",
                     body: formData
@@ -50,15 +50,15 @@ document.addEventListener("DOMContentLoaded", function () {
                 .then(data => {
                     if (data.success) {
                         const previewArea = document.getElementById("audioPreview");
-                        previewArea.innerHTML = ""; 
-            
+                        previewArea.innerHTML = "";
+
                         const audio = document.createElement("audio");
                         audio.controls = true;
                         audio.src = audioUrl;
-            
+
                         const label = document.createElement("p");
                         label.textContent = "Kaydınız:";
-            
+
                         previewArea.appendChild(label);
                         previewArea.appendChild(audio);
                     } else {
@@ -92,10 +92,12 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadText = document.getElementById('uploadText');
 
     fileInput.addEventListener('change', () => {
-        const files = Array.from(fileInput.files);
+        const newFiles = Array.from(fileInput.files);
+        selectedFiles = newFiles; // Mevcut dosyaları yeni seçilenlerle değiştiriyoruz
+
         previewContainer.innerHTML = ''; // Eski önizlemeleri temizle
 
-        if (files.length > 0) {
+        if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
             filePreviewProgressBarContainer.style.display = 'block';
@@ -106,9 +108,6 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-
-        // Yeni dosyaları eklerken önceki dosyaları temizleyin
-        selectedFiles = [...selectedFiles, ...files];
 
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
@@ -123,7 +122,7 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
 
             if (loadedCount === selectedFiles.length) {
-                filePreviewProgressBar.style.backgroundColor = '#4CAF50'; 
+                filePreviewProgressBar.style.backgroundColor = '#4CAF50';
                 filePreviewProgressText.textContent = 'Tamamlandı!';
                 setTimeout(() => {
                     filePreviewProgressBarContainer.style.display = 'none';
@@ -176,7 +175,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     };
                 }));
             } else {
-                updateFilePreviewProgress(); 
+                updateFilePreviewProgress();
                 allPreviews.push(Promise.resolve(null));
             }
         });
@@ -220,14 +219,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
-            submitBtn.disabled = true; 
+            submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%';
             uploadProgressText.textContent = '0%';
             uploadProgressBar.style.backgroundColor = '#4CAF50';
         }
 
-        const formData = new FormData(mainForm); 
+        const formData = new FormData(mainForm);
 
         // Seçilen dosyalar da form verilerine ekleniyor
         selectedFiles.forEach(file => {
@@ -245,15 +244,15 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         xhr.addEventListener('load', function() {
-            if (xhr.status === 200 || xhr.status === 302) { 
+            if (xhr.status === 200 || xhr.status === 302) {
                 uploadProgressBar.style.width = '100%';
                 uploadProgressBar.style.backgroundColor = '#4CAF50';
                 uploadProgressText.textContent = '100% Tamamlandı!';
 
                 setTimeout(() => {
-                    window.location.href = mainForm.action; 
+                    window.location.href = mainForm.action;
                 }, 700);
-                
+
             } else {
                 alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
                 console.error('Sunucu yanıtı:', xhr.responseText);
@@ -270,7 +269,7 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBarContainer.style.display = 'none';
         });
 
-        xhr.open('POST', mainForm.action); 
-        xhr.send(formData); 
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
     });
 });
