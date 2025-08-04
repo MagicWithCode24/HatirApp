@@ -9,7 +9,7 @@
 <body>
     <h1>Lütfen İstenilen Bilgileri Giriniz.</h1>
 
-    <form method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data">
+    <form method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data" id="mainForm">
         <div class="form">
             <p class="isim">Ad-Soyad</p>
             <input type="text" name="name" placeholder="Adınızı Ve Soyadınızı Yazınız" maxlength="86" required>
@@ -40,7 +40,7 @@
             </div>
         </div>
 
-        <button class="finish-btn" type="submit">Gönder</button>
+        <button class="finish-btn" id="submitBtn" type="submit">Gönder</button>
     </form>
 
     <footer class="footer">
@@ -51,3 +51,4 @@
 </body>
 
 </html>
+
