@@ -6,10 +6,12 @@ body {
 }
 
 h1 {
-    margin: 40px;
+    margin: 20px auto 0 auto;
     padding: 0;
     text-align: center;
-    font-size: 35px;
+    font-size: 28px;
+    max-width: 90%;
+    word-wrap: break-word;
 }
 
 .BF {
@@ -49,4 +51,5 @@ h1 {
     color: rgb(0, 21, 255);
     padding: 1px 0;
     font-size: 20px;
+
 }
