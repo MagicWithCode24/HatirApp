@@ -32,10 +32,8 @@ else:
 def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
-
     filename = secure_filename(file.filename)
     s3_file_path = f"{username}/{filename}"
-
     try:
         s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
         print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
@@ -47,10 +45,8 @@ def upload_file_to_s3(file, username):
 def upload_note_to_s3(username, note_content):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
-
     note_filename = f"{username}_note.txt"
     s3_note_path = f"{username}/{note_filename}"
-
     try:
         s3_client.put_object(
             Bucket=AWS_S3_BUCKET_NAME,
@@ -63,6 +59,10 @@ def upload_note_to_s3(username, note_content):
     except Exception as e:
         print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 not yükleme hatası: {e}"
+
+@app.route('/')
+def home():
+    return render_template('index.html')
 
 @app.route('/ana')
 def ana():
@@ -110,15 +110,12 @@ def son_page():
 def upload_audio():
     if 'audio' not in request.files:
         return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
-    
     audio_file = request.files['audio']
     username = request.form.get('name')
     if not username:
         return jsonify(success=False, error="Kullanıcı adı eksik."), 400
-
     filename = f"{username}_audio.wav"
     s3_audio_path = f"{username}/{filename}"
-
     try:
         s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
         audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
