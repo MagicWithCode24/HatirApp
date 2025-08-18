@@ -29,19 +29,62 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3
 else:
     print("UYARI: AWS S3 ortam değişkenleri eksik. Dosya yüklemeleri çalışmayacak.")
 
-def upload_file_to_s3(file, username):
+# ------------------------
+# S3 Multipart Upload Fonksiyonu
+# ------------------------
+def multipart_upload_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
-    filename = secure_filename(file.filename)
-    s3_file_path = f"{username}/{filename}"
-    try:
-        s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
-        print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
-        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
-    except Exception as e:
-        print(f"Hata: '{filename}' S3'e yüklenirken bir sorun oluştu: {e}")
-        return None, f"S3 yükleme hatası: {e}"
 
+    filename = secure_filename(file.filename)
+    s3_key = f"{username}/{filename}"
+
+    try:
+        # 1️⃣ Multipart upload başlat
+        mpu = s3_client.create_multipart_upload(Bucket=AWS_S3_BUCKET_NAME, Key=s3_key)
+        upload_id = mpu['UploadId']
+
+        # 2️⃣ Dosyayı parçalara ayır
+        part_size = 5 * 1024 * 1024  # 5 MB
+        parts = []
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)
+
+        part_number = 1
+        while True:
+            data = file.read(part_size)
+            if not data:
+                break
+            part = s3_client.upload_part(
+                Bucket=AWS_S3_BUCKET_NAME,
+                Key=s3_key,
+                PartNumber=part_number,
+                UploadId=upload_id,
+                Body=data
+            )
+            parts.append({'ETag': part['ETag'], 'PartNumber': part_number})
+            part_number += 1
+
+        # 3️⃣ Multipart upload tamamla
+        s3_client.complete_multipart_upload(
+            Bucket=AWS_S3_BUCKET_NAME,
+            Key=s3_key,
+            UploadId=upload_id,
+            MultipartUpload={'Parts': parts}
+        )
+        file_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_key}"
+        return file_url, None
+
+    except Exception as e:
+        # Hata durumunda upload iptal et
+        if 'upload_id' in locals():
+            s3_client.abort_multipart_upload(Bucket=AWS_S3_BUCKET_NAME, Key=s3_key, UploadId=upload_id)
+        return None, f"S3 multipart yükleme hatası: {e}"
+
+# ------------------------
+# Not yükleme fonksiyonu
+# ------------------------
 def upload_note_to_s3(username, note_content):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
@@ -54,12 +97,13 @@ def upload_note_to_s3(username, note_content):
             Body=note_content.encode('utf-8'),
             ContentType='text/plain'
         )
-        print(f"Not dosyası S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_note_path}")
         return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_note_path}", None
     except Exception as e:
-        print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 not yükleme hatası: {e}"
 
+# ------------------------
+# Flask Routes
+# ------------------------
 @app.route('/')
 def home():
     return render_template('index.html')
@@ -79,7 +123,7 @@ def son():
         return redirect(url_for('ana'))
 
     if not s3_client:
-        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
+        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı.', 'error')
         return redirect(url_for('ana'))
 
     if note_content:
@@ -91,7 +135,7 @@ def son():
 
     for file in uploaded_files:
         if file and file.filename != '':
-            file_s3_url, file_error = upload_file_to_s3(file, username)
+            file_s3_url, file_error = multipart_upload_to_s3(file, username)
             if file_error:
                 flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
             else:
@@ -117,14 +161,17 @@ def upload_audio():
     filename = f"{username}_audio.wav"
     s3_audio_path = f"{username}/{filename}"
     try:
-        s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
-        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
-        print(f"Ses kaydı S3'e yüklendi: {audio_url}")
+        # Audio dosyası için de multipart upload yapılabilir
+        audio_url, audio_error = multipart_upload_to_s3(audio_file, username)
+        if audio_error:
+            return jsonify(success=False, error=audio_error), 500
         return jsonify(success=True, url=audio_url), 200
     except Exception as e:
-        print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
         return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
 
+# ------------------------
+# Run
+# ------------------------
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
