@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 import boto3
 from botocore.client import Config
+import threading
+import uuid
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
@@ -30,79 +32,61 @@ else:
     print("UYARI: AWS S3 ortam değişkenleri eksik. Dosya yüklemeleri çalışmayacak.")
 
 # ------------------------
-# S3 Multipart Upload Fonksiyonu
+# Upload progress tracker
 # ------------------------
-def multipart_upload_to_s3(file, username):
+upload_progress = {}  # {upload_id: {filename: progress_percentage}}
+
+CHUNK_SIZE = 5 * 1024 * 1024  # 5MB
+
+def multipart_upload_thread(file, username, upload_id):
     if not s3_client:
-        return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
+        upload_progress[upload_id][file.filename] = -1
+        return
 
     filename = secure_filename(file.filename)
     s3_key = f"{username}/{filename}"
+    upload_progress[upload_id][filename] = 0
+
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+
+    total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
+
+    parts = []
 
     try:
-        # 1️⃣ Multipart upload başlat
         mpu = s3_client.create_multipart_upload(Bucket=AWS_S3_BUCKET_NAME, Key=s3_key)
-        upload_id = mpu['UploadId']
+        upload_id_s3 = mpu['UploadId']
 
-        # 2️⃣ Dosyayı parçalara ayır
-        part_size = 5 * 1024 * 1024  # 5 MB
-        parts = []
-        file.seek(0, os.SEEK_END)
-        file_size = file.tell()
-        file.seek(0)
-
-        part_number = 1
-        while True:
-            data = file.read(part_size)
-            if not data:
-                break
+        for i in range(total_chunks):
+            start = i * CHUNK_SIZE
+            chunk_data = file.read(CHUNK_SIZE)
             part = s3_client.upload_part(
                 Bucket=AWS_S3_BUCKET_NAME,
                 Key=s3_key,
-                PartNumber=part_number,
-                UploadId=upload_id,
-                Body=data
+                PartNumber=i+1,
+                UploadId=upload_id_s3,
+                Body=chunk_data
             )
-            parts.append({'ETag': part['ETag'], 'PartNumber': part_number})
-            part_number += 1
+            parts.append({'ETag': part['ETag'], 'PartNumber': i+1})
+            upload_progress[upload_id][filename] = int(((i+1)/total_chunks)*100)
 
-        # 3️⃣ Multipart upload tamamla
         s3_client.complete_multipart_upload(
             Bucket=AWS_S3_BUCKET_NAME,
             Key=s3_key,
-            UploadId=upload_id,
+            UploadId=upload_id_s3,
             MultipartUpload={'Parts': parts}
         )
-        file_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_key}"
-        return file_url, None
+        upload_progress[upload_id][filename] = 100
 
     except Exception as e:
-        # Hata durumunda upload iptal et
-        if 'upload_id' in locals():
-            s3_client.abort_multipart_upload(Bucket=AWS_S3_BUCKET_NAME, Key=s3_key, UploadId=upload_id)
-        return None, f"S3 multipart yükleme hatası: {e}"
+        if 'upload_id_s3' in locals():
+            s3_client.abort_multipart_upload(Bucket=AWS_S3_BUCKET_NAME, Key=s3_key, UploadId=upload_id_s3)
+        upload_progress[upload_id][filename] = -1
 
 # ------------------------
-# Not yükleme fonksiyonu
-# ------------------------
-def upload_note_to_s3(username, note_content):
-    if not s3_client:
-        return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
-    note_filename = f"{username}_note.txt"
-    s3_note_path = f"{username}/{note_filename}"
-    try:
-        s3_client.put_object(
-            Bucket=AWS_S3_BUCKET_NAME,
-            Key=s3_note_path,
-            Body=note_content.encode('utf-8'),
-            ContentType='text/plain'
-        )
-        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_note_path}", None
-    except Exception as e:
-        return None, f"S3 not yükleme hatası: {e}"
-
-# ------------------------
-# Flask Routes
+# Routes
 # ------------------------
 @app.route('/')
 def home():
@@ -127,23 +111,26 @@ def son():
         return redirect(url_for('ana'))
 
     if note_content:
-        note_s3_url, note_error = upload_note_to_s3(username, note_content)
-        if note_error:
-            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
-        else:
+        note_s3_path = f"{username}/{username}_note.txt"
+        try:
+            s3_client.put_object(
+                Bucket=AWS_S3_BUCKET_NAME,
+                Key=note_s3_path,
+                Body=note_content.encode('utf-8'),
+                ContentType='text/plain'
+            )
             flash('Not başarıyla yüklendi.', 'success')
+        except Exception as e:
+            flash(f'Not yüklenirken bir hata oluştu: {e}', 'error')
 
     for file in uploaded_files:
         if file and file.filename != '':
-            file_s3_url, file_error = multipart_upload_to_s3(file, username)
-            if file_error:
-                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
-            else:
-                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
+            file_url, error = multipart_upload_thread(file, username, str(uuid.uuid4()))
+            # Burada flash göstermiyoruz çünkü artık async
         else:
             flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
-    flash('Tüm işlemler tamamlandı!', 'success')
+    flash('Dosyalar yüklenmeye başladı. Lütfen progress bar üzerinden kontrol edin.', 'info')
     return redirect(url_for('son_page'))
 
 @app.route('/son')
@@ -158,20 +145,17 @@ def upload_audio():
     username = request.form.get('name')
     if not username:
         return jsonify(success=False, error="Kullanıcı adı eksik."), 400
-    filename = f"{username}_audio.wav"
-    s3_audio_path = f"{username}/{filename}"
-    try:
-        # Audio dosyası için de multipart upload yapılabilir
-        audio_url, audio_error = multipart_upload_to_s3(audio_file, username)
-        if audio_error:
-            return jsonify(success=False, error=audio_error), 500
-        return jsonify(success=True, url=audio_url), 200
-    except Exception as e:
-        return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
+    audio_thread_id = str(uuid.uuid4())
+    upload_progress[audio_thread_id] = {}
+    threading.Thread(target=multipart_upload_thread, args=(audio_file, username, audio_thread_id)).start()
+    return jsonify(success=True, upload_id=audio_thread_id)
 
-# ------------------------
-# Run
-# ------------------------
+@app.route('/upload-progress/<upload_id>')
+def progress(upload_id):
+    if upload_id in upload_progress:
+        return jsonify(upload_progress[upload_id])
+    return jsonify({})
+
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
