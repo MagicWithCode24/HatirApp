@@ -92,6 +92,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const maxOverlayPreview = 3;
         let allPreviews = [];
         let loadedCount = 0;
+
         const updateFilePreviewProgress = () => {
             loadedCount++;
             const percentComplete = (loadedCount / selectedFiles.length) * 100;
@@ -124,9 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     const video = document.createElement('video');
                     video.preload = 'metadata';
                     video.src = URL.createObjectURL(file);
-                    video.onloadeddata = function() {
-                        video.currentTime = 0;
-                    };
+                    video.onloadeddata = function() { video.currentTime = 0; };
                     video.onseeked = function() {
                         const canvas = document.createElement('canvas');
                         canvas.width = video.videoWidth;
@@ -191,10 +190,8 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-
         const formData = new FormData(mainForm);
 
-        // Chunk upload helper
         async function uploadFileInChunks(file, username) {
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             for (let i = 0; i < totalChunks; i++) {
