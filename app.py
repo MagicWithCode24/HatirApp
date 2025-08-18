@@ -35,7 +35,6 @@ else:
 # Upload progress tracker
 # ------------------------
 upload_progress = {}  # {upload_id: {filename: progress_percentage}}
-
 CHUNK_SIZE = 5 * 1024 * 1024  # 5MB
 
 def multipart_upload_thread(file, username, upload_id):
@@ -52,7 +51,6 @@ def multipart_upload_thread(file, username, upload_id):
     file.seek(0)
 
     total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
-
     parts = []
 
     try:
@@ -125,12 +123,14 @@ def son():
 
     for file in uploaded_files:
         if file and file.filename != '':
-            file_url, error = multipart_upload_thread(file, username, str(uuid.uuid4()))
-            # Burada flash göstermiyoruz çünkü artık async
+            upload_id = str(uuid.uuid4())
+            upload_progress[upload_id] = {}
+            threading.Thread(target=multipart_upload_thread, args=(file, username, upload_id)).start()
+            flash(f"{file.filename} yüklenmeye başladı. Upload ID: {upload_id}", 'info')
         else:
             flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
-    flash('Dosyalar yüklenmeye başladı. Lütfen progress bar üzerinden kontrol edin.', 'info')
+    flash('Dosyalar yüklenmeye başladı. Progress bar ile takip edebilirsiniz.', 'info')
     return redirect(url_for('son_page'))
 
 @app.route('/son')
