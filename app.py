@@ -64,10 +64,6 @@ def upload_note_to_s3(username, note_content):
         print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 not yükleme hatası: {e}"
 
-@app.route('/')
-def home():
-    return render_template('index.html')
-
 @app.route('/ana')
 def ana():
     return render_template('ana.html')
@@ -131,6 +127,18 @@ def upload_audio():
     except Exception as e:
         print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
         return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
+
+# --- NGROK YÖNLENDİRME EKLENDİ ---
+from flask import redirect
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def redirect_to_ngrok(path):
+    ngrok_url = "https://851128dfa2a0.ngrok-free.app"
+    if path:
+        return redirect(f"{ngrok_url}/{path}")
+    return redirect(ngrok_url)
+# ---------------------------------
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
