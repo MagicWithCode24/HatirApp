@@ -128,18 +128,6 @@ def upload_audio():
         print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
         return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
 
-# --- NGROK YÖNLENDİRME EKLENDİ ---
-from flask import redirect
-
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
-def redirect_to_ngrok(path):
-    ngrok_url = "https://851128dfa2a0.ngrok-free.app"
-    if path:
-        return redirect(f"{ngrok_url}/{path}")
-    return redirect(ngrok_url)
-# ---------------------------------
-
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
