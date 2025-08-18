@@ -15,11 +15,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
+    // Mikrofon paneli açma/kapama
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
     });
 
+    // Ses kaydı başlatma
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
@@ -27,12 +29,15 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
             audioChunks = [];
+
             mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
+
             mediaRecorder.addEventListener("stop", async () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
+
                 try {
                     const res = await fetch("/upload-audio", { method: "POST", body: formData });
                     const data = await res.json();
@@ -54,6 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     alert("Ses kaydı yüklenirken bir hata oluştu.");
                 }
             });
+
             startBtn.disabled = true;
             stopBtn.disabled = false;
         } catch (err) {
@@ -62,12 +68,14 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Ses kaydı durdurma
     stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
 
+    // Dosya input ve önizleme
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -76,6 +84,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = newFiles;
         previewContainer.innerHTML = '';
+
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
@@ -139,7 +148,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         resolve(img);
                     };
                     video.onerror = function() {
-                        console.error("Video yüklenemedi:", file.name);
                         const errorDiv = document.createElement('div');
                         errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
                         errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
@@ -178,6 +186,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Form submit ve chunked upload
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         if (submitBtn) {
@@ -190,9 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-        const formData = new FormData(mainForm);
 
-        // Chunk upload helper
         async function uploadFileInChunks(file, username) {
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
             for (let i = 0; i < totalChunks; i++) {
@@ -204,7 +211,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 chunkForm.append("name", username);
                 chunkForm.append("chunkIndex", i);
                 chunkForm.append("totalChunks", totalChunks);
+
                 await fetch(mainForm.action, { method: "POST", body: chunkForm });
+
+                const percentComplete = (((i + 1) + i * (selectedFiles.indexOf(file))) / selectedFiles.reduce((acc, f) => acc + Math.ceil(f.size / CHUNK_SIZE), 0)) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             }
         }
 
