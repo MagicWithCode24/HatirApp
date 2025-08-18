@@ -3,10 +3,13 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 import boto3
 from botocore.client import Config
-import uuid
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
+
+# TIMEOUT AYARLARI ARTTIRDIM
+app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 * 1024  # 50GB
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -21,7 +24,12 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
             region_name=AWS_S3_REGION,
-            config=Config(signature_version='s3v4')
+            config=Config(
+                signature_version='s3v4',
+                retries={'max_attempts': 3},
+                read_timeout=300,  # 5 dakika
+                connect_timeout=60  # 1 dakika
+            )
         )
         print("Amazon S3 istemcisi başarıyla başlatıldı.")
     except Exception as e:
@@ -29,9 +37,6 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3
         s3_client = None
 else:
     print("UYARI: AWS S3 ortam değişkenleri eksik. Dosya yüklemeleri çalışmayacak.")
-
-# Multipart upload tracking
-active_uploads = {}
 
 def upload_file_to_s3(file, username):
     if not s3_client:
@@ -71,154 +76,6 @@ def home():
 @app.route('/ana')
 def ana():
     return render_template('ana.html')
-
-# Yeni chunk upload endpoints
-@app.route('/start-upload', methods=['POST'])
-def start_upload():
-    """Multipart upload başlat"""
-    if not s3_client:
-        return jsonify(success=False, error="S3 istemcisi bulunamadı"), 500
-    
-    data = request.get_json()
-    filename = secure_filename(data['filename'])
-    username = data['username']
-    file_size = data['fileSize']
-    
-    s3_file_path = f"{username}/{filename}"
-    upload_id = str(uuid.uuid4())
-    
-    try:
-        # S3 multipart upload başlat
-        response = s3_client.create_multipart_upload(
-            Bucket=AWS_S3_BUCKET_NAME,
-            Key=s3_file_path,
-            ContentType=data.get('contentType', 'application/octet-stream')
-        )
-        
-        s3_upload_id = response['UploadId']
-        
-        # Upload bilgilerini sakla
-        active_uploads[upload_id] = {
-            's3_upload_id': s3_upload_id,
-            's3_key': s3_file_path,
-            'parts': [],
-            'total_size': file_size,
-            'uploaded_size': 0
-        }
-        
-        return jsonify(success=True, uploadId=upload_id)
-        
-    except Exception as e:
-        print(f"Multipart upload başlatma hatası: {e}")
-        return jsonify(success=False, error=str(e)), 500
-
-@app.route('/upload-chunk', methods=['POST'])
-def upload_chunk():
-    """Dosya parçası yükle"""
-    if not s3_client:
-        return jsonify(success=False, error="S3 istemcisi bulunamadı"), 500
-    
-    upload_id = request.form.get('uploadId')
-    chunk_number = int(request.form.get('chunkNumber'))
-    chunk_data = request.files.get('chunk')
-    
-    if upload_id not in active_uploads:
-        return jsonify(success=False, error="Upload ID bulunamadı"), 400
-    
-    upload_info = active_uploads[upload_id]
-    
-    try:
-        # Chunk'ı S3'e yükle
-        response = s3_client.upload_part(
-            Bucket=AWS_S3_BUCKET_NAME,
-            Key=upload_info['s3_key'],
-            PartNumber=chunk_number,
-            UploadId=upload_info['s3_upload_id'],
-            Body=chunk_data.read()
-        )
-        
-        # Part bilgisini sakla
-        upload_info['parts'].append({
-            'ETag': response['ETag'],
-            'PartNumber': chunk_number
-        })
-        
-        upload_info['uploaded_size'] += len(chunk_data.read())
-        chunk_data.seek(0)  # Reset for re-read
-        
-        return jsonify(success=True, partNumber=chunk_number)
-        
-    except Exception as e:
-        print(f"Chunk yükleme hatası: {e}")
-        return jsonify(success=False, error=str(e)), 500
-
-@app.route('/complete-upload', methods=['POST'])
-def complete_upload():
-    """Multipart upload'ı tamamla"""
-    if not s3_client:
-        return jsonify(success=False, error="S3 istemcisi bulunamadı"), 500
-    
-    data = request.get_json()
-    upload_id = data['uploadId']
-    
-    if upload_id not in active_uploads:
-        return jsonify(success=False, error="Upload ID bulunamadı"), 400
-    
-    upload_info = active_uploads[upload_id]
-    
-    try:
-        # Part'ları sırala
-        parts = sorted(upload_info['parts'], key=lambda x: x['PartNumber'])
-        
-        # Upload'ı tamamla
-        s3_client.complete_multipart_upload(
-            Bucket=AWS_S3_BUCKET_NAME,
-            Key=upload_info['s3_key'],
-            UploadId=upload_info['s3_upload_id'],
-            MultipartUpload={'Parts': parts}
-        )
-        
-        file_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{upload_info['s3_key']}"
-        
-        # Cleanup
-        del active_uploads[upload_id]
-        
-        return jsonify(success=True, url=file_url)
-        
-    except Exception as e:
-        print(f"Upload tamamlama hatası: {e}")
-        return jsonify(success=False, error=str(e)), 500
-
-@app.route('/cancel-upload', methods=['POST'])
-def cancel_upload():
-    """Upload'ı iptal et"""
-    if not s3_client:
-        return jsonify(success=False, error="S3 istemcisi bulunamadı"), 500
-    
-    data = request.get_json()
-    upload_id = data['uploadId']
-    
-    if upload_id not in active_uploads:
-        return jsonify(success=False, error="Upload ID bulunamadı"), 400
-    
-    upload_info = active_uploads[upload_id]
-    
-    try:
-        # S3'teki multipart upload'ı iptal et
-        s3_client.abort_multipart_upload(
-            Bucket=AWS_S3_BUCKET_NAME,
-            Key=upload_info['s3_key'],
-            UploadId=upload_info['s3_upload_id']
-        )
-        
-        # Cleanup
-        del active_uploads[upload_id]
-        
-        return jsonify(success=True)
-        
-    except Exception as e:
-        print(f"Upload iptal hatası: {e}")
-        return jsonify(success=False, error=str(e)), 500
 
 @app.route('/son', methods=['POST'])
 def son():
@@ -279,4 +136,4 @@ def upload_audio():
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port, threaded=True)
