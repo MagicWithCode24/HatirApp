@@ -75,59 +75,82 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     mainForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        if (submitBtn) {
-            submitBtn.textContent = 'Yükleniyor...';
-            submitBtn.disabled = true;
-            uploadProgressBarContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%';
-            uploadProgressText.textContent = '0%';
-            uploadProgressBar.style.backgroundColor = '#4CAF50';
-        }
+    e.preventDefault();
+    if (submitBtn) {
+        submitBtn.textContent = 'Yükleniyor...';
+        submitBtn.disabled = true;
+        uploadProgressBarContainer.style.display = 'block';
+        uploadProgressBar.style.width = '0%';
+        uploadProgressText.textContent = '0%';
+        uploadProgressBar.style.backgroundColor = '#4CAF50';
+    }
 
-        const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB
-        const totalChunks = selectedFiles.reduce((sum, f) => sum + Math.ceil(f.size / CHUNK_SIZE), 0);
+    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
+    const MAX_PARALLEL = 3; // Aynı anda 3 chunk
+
+    const formDataBase = new FormData(mainForm);
+    const username = formDataBase.get("name");
+
+    async function uploadFileInChunks(file) {
+        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
         let uploadedChunks = 0;
 
-        async function uploadFileInChunks(file, username) {
-            const chunks = Math.ceil(file.size / CHUNK_SIZE);
-            for (let i = 0; i < chunks; i++) {
-                const start = i * CHUNK_SIZE;
-                const end = Math.min(file.size, start + CHUNK_SIZE);
-                const chunk = file.slice(start, end);
-                const chunkForm = new FormData();
-                chunkForm.append("file", chunk, file.name);
-                chunkForm.append("name", username);
-                chunkForm.append("chunkIndex", i);
-                chunkForm.append("totalChunks", chunks);
+        async function sendChunk(index) {
+            const start = index * CHUNK_SIZE;
+            const end = Math.min(file.size, start + CHUNK_SIZE);
+            const chunk = file.slice(start, end);
+            const chunkForm = new FormData();
+            chunkForm.append("file", chunk, file.name);
+            chunkForm.append("name", username);
+            chunkForm.append("chunkIndex", index);
+            chunkForm.append("totalChunks", totalChunks);
 
-                await fetch(mainForm.action, { method: "POST", body: chunkForm });
-
-                uploadedChunks++;
-                const percentComplete = (uploadedChunks / totalChunks) * 100;
-                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            }
+            await fetch(mainForm.action, { method: "POST", body: chunkForm });
+            uploadedChunks++;
+            const percentComplete = Math.round((uploadedChunks / totalChunks) * 100);
+            uploadProgressBar.style.width = percentComplete + '%';
+            uploadProgressText.textContent = percentComplete + '%';
         }
 
-        async function startUpload() {
-            const username = document.querySelector("input[name='name']").value;
-            for (const file of selectedFiles) {
-                await uploadFileInChunks(file, username);
+        // Paralel gönderim: MAX_PARALLEL chunk
+        let currentIndex = 0;
+        const parallelUploads = [];
+        while (currentIndex < totalChunks) {
+            while (parallelUploads.length < MAX_PARALLEL && currentIndex < totalChunks) {
+                parallelUploads.push(sendChunk(currentIndex));
+                currentIndex++;
             }
+            await Promise.race(parallelUploads).then(() => {
+                // Tamamlanan chunk'ı array'den çıkar
+                for (let i = 0; i < parallelUploads.length; i++) {
+                    if (parallelUploads[i].isFulfilled) {
+                        parallelUploads.splice(i, 1);
+                        break;
+                    }
+                }
+            }).catch(() => {}); // Hata olursa atla
         }
 
-        startUpload().then(() => {
-            uploadProgressBar.style.width = '100%';
-            uploadProgressBar.style.backgroundColor = '#4CAF50';
-            uploadProgressText.textContent = '100% Tamamlandı!';
-            setTimeout(() => window.location.href = mainForm.action, 700);
-        }).catch(err => {
-            console.error(err);
-            alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
-            submitBtn.textContent = 'Gönder';
-            submitBtn.disabled = false;
-            uploadProgressBarContainer.style.display = 'none';
-        });
+        // Kalanları tamamla
+        await Promise.all(parallelUploads);
+    }
+
+    async function startUpload() {
+        for (const file of selectedFiles) {
+            await uploadFileInChunks(file);
+        }
+    }
+
+    startUpload().then(() => {
+        uploadProgressBar.style.width = '100%';
+        uploadProgressBar.style.backgroundColor = '#4CAF50';
+        uploadProgressText.textContent = '100% Tamamlandı!';
+        setTimeout(() => window.location.href = mainForm.action, 700);
+    }).catch(err => {
+        console.error(err);
+        alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+        submitBtn.textContent = 'Gönder';
+        submitBtn.disabled = false;
+        uploadProgressBarContainer.style.display = 'none';
     });
 });
