@@ -46,7 +46,6 @@ document.addEventListener("DOMContentLoaded", function () {
             stopBtn.disabled = false;
         } catch (err) {
             console.error("Mikrofon erişim hatası:", err);
-            // Uyarı yerine özel bir modal kullanmak daha iyi bir kullanıcı deneyimi sunar
             alert("Mikrofon erişimi reddedildi veya bir hata oluştu.");
         }
     });
@@ -243,7 +242,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const noteContent = document.querySelector("textarea[name='note']").value.trim();
 
         if (!username) {
-            alert('Lütfen isminizi girin!'); // Özel bir modal ile değiştirmeyi düşünebilirsiniz
+            alert('Lütfen isminizi girin!');
             isUploading = false;
             submitBtn.textContent = 'Gönder';
             submitBtn.disabled = false;
@@ -251,19 +250,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const uploadTasks = [];
-        let completedTaskCount = 0;
         const overallProgress = new Map();
-
-        // Yükleme ilerlemesini hesaplayan ve güncelleyen fonksiyon
-        function updateOverallProgress() {
-            let totalProgress = 0;
-            overallProgress.forEach(progress => {
-                totalProgress += progress;
-            });
-            const percentComplete = (totalProgress / totalTasks) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-        }
 
         // Notu yükle
         if (noteContent) {
@@ -319,6 +306,17 @@ document.addEventListener("DOMContentLoaded", function () {
         
         const totalTasks = overallProgress.size;
 
+        // Genel ilerleme çubuğunu güncelle
+        function updateOverallProgress() {
+            let totalProgress = 0;
+            overallProgress.forEach(progress => {
+                totalProgress += progress;
+            });
+            const percentComplete = (totalProgress / totalTasks) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+        }
+        
         // Tüm yükleme işlemlerini eş zamanlı olarak başlat
         await Promise.all(uploadTasks.map(task => task()));
 
