@@ -15,10 +15,27 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // Chunk upload ayarları
-    const CHUNK_SIZE = 1024 * 1024; // 1MB chunks (mobil için optimize)
+    // Chunk upload ayarları - Adaptive chunk size
+    let CHUNK_SIZE = 5 * 1024 * 1024; // 5MB default
     const MAX_RETRIES = 3;
-    const TIMEOUT_MS = 30000; // 30 saniye timeout
+    const TIMEOUT_MS = 60000; // 60 saniye timeout
+    
+    // Bağlantı hızına göre chunk boyutunu optimize et
+    function getOptimalChunkSize() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (connection) {
+            if (connection.effectiveType === '4g' || connection.effectiveType === 'wifi') {
+                return 15 * 1024 * 1024; // 15MB for fast connections
+            } else if (connection.effectiveType === '3g') {
+                return 5 * 1024 * 1024;  // 5MB for 3G
+            } else {
+                return 2 * 1024 * 1024;  // 2MB for slow connections
+            }
+        }
+        return 5 * 1024 * 1024; // 5MB default
+    }
+    
+    CHUNK_SIZE = getOptimalChunkSize();
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
