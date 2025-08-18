@@ -15,28 +15,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // Chunk upload ayarları - Adaptive chunk size
-    let CHUNK_SIZE = 5 * 1024 * 1024; // 5MB default
-    const MAX_RETRIES = 3;
-    const TIMEOUT_MS = 60000; // 60 saniye timeout
-    
-    // Bağlantı hızına göre chunk boyutunu optimize et
-    function getOptimalChunkSize() {
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        if (connection) {
-            if (connection.effectiveType === '4g' || connection.effectiveType === 'wifi') {
-                return 15 * 1024 * 1024; // 15MB for fast connections
-            } else if (connection.effectiveType === '3g') {
-                return 5 * 1024 * 1024;  // 5MB for 3G
-            } else {
-                return 2 * 1024 * 1024;  // 2MB for slow connections
-            }
-        }
-        return 5 * 1024 * 1024; // 5MB default
-    }
-    
-    CHUNK_SIZE = getOptimalChunkSize();
-
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -234,127 +212,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Chunk upload fonksiyonları
-    async function uploadFileInChunks(file, username) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                // 1. Upload başlat
-                const startResponse = await fetch('/start-upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        filename: file.name,
-                        username: username,
-                        fileSize: file.size,
-                        contentType: file.type
-                    })
-                });
-
-                const startData = await startResponse.json();
-                if (!startData.success) {
-                    throw new Error(startData.error);
-                }
-
-                const uploadId = startData.uploadId;
-                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-                let uploadedBytes = 0;
-
-                // 2. Chunk'ları sırayla yükle
-                for (let chunkNumber = 1; chunkNumber <= totalChunks; chunkNumber++) {
-                    const start = (chunkNumber - 1) * CHUNK_SIZE;
-                    const end = Math.min(start + CHUNK_SIZE, file.size);
-                    const chunk = file.slice(start, end);
-
-                    let retryCount = 0;
-                    let success = false;
-
-                    while (retryCount < MAX_RETRIES && !success) {
-                        try {
-                            const chunkFormData = new FormData();
-                            chunkFormData.append('uploadId', uploadId);
-                            chunkFormData.append('chunkNumber', chunkNumber);
-                            chunkFormData.append('chunk', chunk);
-
-                            const chunkResponse = await Promise.race([
-                                fetch('/upload-chunk', {
-                                    method: 'POST',
-                                    body: chunkFormData
-                                }),
-                                new Promise((_, reject) => 
-                                    setTimeout(() => reject(new Error('Timeout')), TIMEOUT_MS)
-                                )
-                            ]);
-
-                            const chunkData = await chunkResponse.json();
-                            
-                            if (chunkData.success) {
-                                success = true;
-                                uploadedBytes += chunk.size;
-                                
-                                // Progress güncelle
-                                const progress = (uploadedBytes / file.size) * 100;
-                                updateUploadProgress(progress);
-                            } else {
-                                throw new Error(chunkData.error);
-                            }
-                        } catch (error) {
-                            retryCount++;
-                            console.warn(`Chunk ${chunkNumber} yüklenemedi (deneme ${retryCount}):`, error);
-                            
-                            if (retryCount < MAX_RETRIES) {
-                                // Exponential backoff
-                                await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
-                            }
-                        }
-                    }
-
-                    if (!success) {
-                        // Upload'ı iptal et
-                        await fetch('/cancel-upload', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ uploadId })
-                        });
-                        throw new Error(`Chunk ${chunkNumber} ${MAX_RETRIES} denemeden sonra yüklenemedi`);
-                    }
-                }
-
-                // 3. Upload'ı tamamla
-                const completeResponse = await fetch('/complete-upload', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ uploadId })
-                });
-
-                const completeData = await completeResponse.json();
-                if (completeData.success) {
-                    resolve(completeData.url);
-                } else {
-                    throw new Error(completeData.error);
-                }
-
-            } catch (error) {
-                console.error(`${file.name} yükleme hatası:`, error);
-                reject(error);
-            }
-        });
-    }
-
-    function updateUploadProgress(percent) {
-        uploadProgressBar.style.width = percent.toFixed(0) + '%';
-        uploadProgressText.textContent = percent.toFixed(0) + '%';
-    }
-
-    mainForm.addEventListener('submit', async function(e) {
+    // ESKİ SİSTEM AYNEN KALDI - SADECE TIMEOUT ARTTIRDIM
+    mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-
-        const username = document.querySelector("input[name='name']").value;
-        const noteContent = document.querySelector("textarea[name='note']").value;
-
-        if (!username) {
-            alert('Lütfen bir isim girin!');
-            return;
-        }
 
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
@@ -365,86 +225,60 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBar.style.backgroundColor = '#6a0dad';
         }
 
-        try {
-            let totalFiles = selectedFiles.length;
-            let completedFiles = 0;
-            let allUploadUrls = [];
+        const formData = new FormData(mainForm);
 
-            // Önce notu yükle
-            if (noteContent) {
-                const noteFormData = new FormData();
-                noteFormData.append('name', username);
-                noteFormData.append('note', noteContent);
+        // Seçilen dosyalar da form verilerine ekleniyor
+        selectedFiles.forEach(file => {
+            formData.append("file", file);
+        });
 
-                const noteResponse = await fetch('/son', {
-                    method: 'POST',
-                    body: noteFormData
-                });
+        const xhr = new XMLHttpRequest();
 
-                if (!noteResponse.ok) {
-                    throw new Error('Not yüklenemedi');
-                }
+        // TIMEOUT ARTTIRDIM: 5 dakika
+        xhr.timeout = 300000; // 5 dakika
+
+        xhr.upload.addEventListener('progress', function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             }
+        });
 
-            // Dosyaları chunk upload ile yükle
-            if (selectedFiles.length > 0) {
-                for (let i = 0; i < selectedFiles.length; i++) {
-                    const file = selectedFiles[i];
-                    console.log(`${file.name} yükleniyor... (${i + 1}/${totalFiles})`);
-                    
-                    try {
-                        const fileUrl = await uploadFileInChunks(file, username);
-                        allUploadUrls.push(fileUrl);
-                        completedFiles++;
-                        
-                        // Genel progress güncelle
-                        const overallProgress = (completedFiles / totalFiles) * 100;
-                        updateUploadProgress(overallProgress);
-                        
-                        console.log(`✓ ${file.name} başarıyla yüklendi`);
-                    } catch (error) {
-                        console.error(`✗ ${file.name} yüklenemedi:`, error);
-                        alert(`${file.name} yüklenirken hata oluştu: ${error.message}`);
-                    }
-                }
-            }
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200 || xhr.status === 302) {
+                uploadProgressBar.style.width = '100%';
+                uploadProgressBar.style.backgroundColor = '#4CAF50';
+                uploadProgressText.textContent = '100% Tamamlandı!';
 
-            // Tüm işlemler tamamlandı
-            uploadProgressBar.style.backgroundColor = '#4CAF50';
-            uploadProgressText.textContent = 'Tamamlandı!';
-            
-            setTimeout(() => {
-                window.location.href = '/son';
-            }, 1000);
+                setTimeout(() => {
+                    window.location.href = mainForm.action;
+                }, 700);
 
-        } catch (error) {
-            console.error('Form gönderme hatası:', error);
-            alert('Bir hata oluştu: ' + error.message);
-            
-            if (submitBtn) {
+            } else {
+                alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+                console.error('Sunucu yanıtı:', xhr.responseText);
                 submitBtn.textContent = 'Gönder';
                 submitBtn.disabled = false;
                 uploadProgressBarContainer.style.display = 'none';
             }
-        }
-    });
+        });
 
-    // Network durumu kontrolü
-    function checkNetworkStatus() {
-        if (!navigator.onLine) {
-            alert('İnternet bağlantınız kesildi. Lütfen bağlantınızı kontrol edin.');
-            return false;
-        }
-        return true;
-    }
+        xhr.addEventListener('error', function() {
+            alert('Ağ hatası veya sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.');
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+            uploadProgressBarContainer.style.display = 'none';
+        });
 
-    // Network event listeners
-    window.addEventListener('online', () => {
-        console.log('İnternet bağlantısı geri geldi');
-    });
+        xhr.addEventListener('timeout', function() {
+            alert('Yükleme çok uzun sürdü. Lütfen dosya boyutlarınızı kontrol edin.');
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+            uploadProgressBarContainer.style.display = 'none';
+        });
 
-    window.addEventListener('offline', () => {
-        console.log('İnternet bağlantısı kesildi');
-        alert('İnternet bağlantınız kesildi. Upload işlemi duraklatıldı.');
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
     });
 });
