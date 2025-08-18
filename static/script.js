@@ -11,7 +11,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
     const uploadProgressBar = document.getElementById("uploadProgressBar");
     const uploadProgressText = document.getElementById("uploadProgressText");
+    const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
+    const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
+    const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
+    // ---------- Ses kaydı ----------
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -65,6 +69,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
+    // ---------- Dosya önizleme ----------
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -72,85 +77,183 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         selectedFiles = Array.from(fileInput.files);
         previewContainer.innerHTML = '';
+        if (selectedFiles.length > 0) {
+            uploadText.style.display = "none";
+            previewContainer.style.minHeight = "100px";
+            filePreviewProgressBarContainer.style.display = 'block';
+            filePreviewProgressBar.style.width = '0%';
+            filePreviewProgressText.textContent = '0%';
+        } else {
+            uploadText.style.display = "block";
+            previewContainer.style.minHeight = 'auto';
+            filePreviewProgressBarContainer.style.display = 'none';
+        }
+
+        const maxNormalPreview = 2;
+        const maxOverlayPreview = 3;
+        let allPreviews = [];
+        let loadedCount = 0;
+
+        const updateFilePreviewProgress = () => {
+            loadedCount++;
+            const percentComplete = (loadedCount / selectedFiles.length) * 100;
+            filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
+            if (loadedCount === selectedFiles.length) {
+                filePreviewProgressBar.style.backgroundColor = '#4CAF50';
+                filePreviewProgressText.textContent = 'Tamamlandı!';
+                setTimeout(() => {
+                    filePreviewProgressBarContainer.style.display = 'none';
+                    filePreviewProgressBar.style.backgroundColor = '#6a0dad';
+                }, 1500);
+            }
+        };
+
+        selectedFiles.forEach(file => {
+            if (file.type.startsWith("image/")) {
+                allPreviews.push(new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => { 
+                        const img = document.createElement("img");
+                        img.src = e.target.result;
+                        updateFilePreviewProgress();
+                        resolve(img);
+                    };
+                    reader.readAsDataURL(file);
+                }));
+            } else if (file.type.startsWith("video/")) {
+                allPreviews.push(new Promise(resolve => {
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.src = URL.createObjectURL(file);
+                    video.onloadeddata = function() { video.currentTime = 0; };
+                    video.onseeked = function() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const img = document.createElement('img');
+                        img.src = canvas.toDataURL('image/jpeg');
+                        URL.revokeObjectURL(video.src);
+                        updateFilePreviewProgress();
+                        resolve(img);
+                    };
+                    video.onerror = function() {
+                        const errorDiv = document.createElement('div');
+                        errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
+                        errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
+                        updateFilePreviewProgress();
+                        resolve(errorDiv);
+                    };
+                }));
+            } else {
+                updateFilePreviewProgress();
+                allPreviews.push(Promise.resolve(null));
+            }
+        });
+
+        Promise.all(allPreviews).then(results => {
+            const validPreviews = results.filter(el => el !== null);
+            validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
+            const totalExtraCount = validPreviews.length - maxNormalPreview;
+            if (totalExtraCount > 0) {
+                const overlayStackContainer = document.createElement("div");
+                overlayStackContainer.className = "overlay-stack-container";
+                const slideDistance = 3.75;
+                validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
+                    el.classList.add("overlay");
+                    el.style.left = `${index * slideDistance}px`;
+                    el.style.zIndex = maxOverlayPreview - index;
+                    overlayStackContainer.appendChild(el);
+                });
+                if (totalExtraCount > 0) {
+                    const extra = document.createElement("div");
+                    extra.className = "extra-count";
+                    extra.textContent = `+${totalExtraCount}`;
+                    overlayStackContainer.appendChild(extra);
+                }
+                previewContainer.appendChild(overlayStackContainer);
+            }
+        });
     });
 
+    // ---------- Form submit ve paralel chunk upload ----------
     mainForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    if (submitBtn) {
-        submitBtn.textContent = 'Yükleniyor...';
-        submitBtn.disabled = true;
-        uploadProgressBarContainer.style.display = 'block';
-        uploadProgressBar.style.width = '0%';
-        uploadProgressText.textContent = '0%';
-        uploadProgressBar.style.backgroundColor = '#4CAF50';
-    }
-
-    const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB
-    const MAX_PARALLEL = 3; // Aynı anda 3 chunk
-
-    const formDataBase = new FormData(mainForm);
-    const username = formDataBase.get("name");
-
-    async function uploadFileInChunks(file) {
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-        let uploadedChunks = 0;
-
-        async function sendChunk(index) {
-            const start = index * CHUNK_SIZE;
-            const end = Math.min(file.size, start + CHUNK_SIZE);
-            const chunk = file.slice(start, end);
-            const chunkForm = new FormData();
-            chunkForm.append("file", chunk, file.name);
-            chunkForm.append("name", username);
-            chunkForm.append("chunkIndex", index);
-            chunkForm.append("totalChunks", totalChunks);
-
-            await fetch(mainForm.action, { method: "POST", body: chunkForm });
-            uploadedChunks++;
-            const percentComplete = Math.round((uploadedChunks / totalChunks) * 100);
-            uploadProgressBar.style.width = percentComplete + '%';
-            uploadProgressText.textContent = percentComplete + '%';
+        e.preventDefault();
+        if (submitBtn) {
+            submitBtn.textContent = 'Yükleniyor...';
+            submitBtn.disabled = true;
+            uploadProgressBarContainer.style.display = 'block';
+            uploadProgressBar.style.width = '0%';
+            uploadProgressText.textContent = '0%';
+            uploadProgressBar.style.backgroundColor = '#4CAF50';
         }
 
-        // Paralel gönderim: MAX_PARALLEL chunk
-        let currentIndex = 0;
-        const parallelUploads = [];
-        while (currentIndex < totalChunks) {
-            while (parallelUploads.length < MAX_PARALLEL && currentIndex < totalChunks) {
-                parallelUploads.push(sendChunk(currentIndex));
-                currentIndex++;
+        const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
+        const MAX_PARALLEL = 3;
+
+        const formDataBase = new FormData(mainForm);
+        const username = formDataBase.get("name");
+
+        async function uploadFileInChunks(file) {
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            let uploadedChunks = 0;
+
+            async function sendChunk(index) {
+                const start = index * CHUNK_SIZE;
+                const end = Math.min(file.size, start + CHUNK_SIZE);
+                const chunk = file.slice(start, end);
+                const chunkForm = new FormData();
+                chunkForm.append("file", chunk, file.name);
+                chunkForm.append("name", username);
+                chunkForm.append("chunkIndex", index);
+                chunkForm.append("totalChunks", totalChunks);
+
+                await fetch(mainForm.action, { method: "POST", body: chunkForm });
+                uploadedChunks++;
+                const percentComplete = Math.round((uploadedChunks / totalChunks) * 100);
+                uploadProgressBar.style.width = percentComplete + '%';
+                uploadProgressText.textContent = percentComplete + '%';
             }
-            await Promise.race(parallelUploads).then(() => {
-                // Tamamlanan chunk'ı array'den çıkar
-                for (let i = 0; i < parallelUploads.length; i++) {
-                    if (parallelUploads[i].isFulfilled) {
-                        parallelUploads.splice(i, 1);
-                        break;
-                    }
+
+            // Paralel gönderim
+            let currentIndex = 0;
+            const parallelUploads = [];
+            while (currentIndex < totalChunks) {
+                while (parallelUploads.length < MAX_PARALLEL && currentIndex < totalChunks) {
+                    parallelUploads.push(sendChunk(currentIndex));
+                    currentIndex++;
                 }
-            }).catch(() => {}); // Hata olursa atla
+                await Promise.race(parallelUploads).then(() => {
+                    for (let i = 0; i < parallelUploads.length; i++) {
+                        if (parallelUploads[i].isFulfilled) {
+                            parallelUploads.splice(i, 1);
+                            break;
+                        }
+                    }
+                }).catch(() => {});
+            }
+            await Promise.all(parallelUploads);
         }
 
-        // Kalanları tamamla
-        await Promise.all(parallelUploads);
-    }
-
-    async function startUpload() {
-        for (const file of selectedFiles) {
-            await uploadFileInChunks(file);
+        async function startUpload() {
+            for (const file of selectedFiles) {
+                await uploadFileInChunks(file);
+            }
         }
-    }
 
-    startUpload().then(() => {
-        uploadProgressBar.style.width = '100%';
-        uploadProgressBar.style.backgroundColor = '#4CAF50';
-        uploadProgressText.textContent = '100% Tamamlandı!';
-        setTimeout(() => window.location.href = mainForm.action, 700);
-    }).catch(err => {
-        console.error(err);
-        alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
-        submitBtn.textContent = 'Gönder';
-        submitBtn.disabled = false;
-        uploadProgressBarContainer.style.display = 'none';
+        startUpload().then(() => {
+            uploadProgressBar.style.width = '100%';
+            uploadProgressBar.style.backgroundColor = '#4CAF50';
+            uploadProgressText.textContent = '100% Tamamlandı!';
+            setTimeout(() => window.location.href = mainForm.action, 700);
+        }).catch(err => {
+            console.error(err);
+            alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+            uploadProgressBarContainer.style.display = 'none';
+        });
     });
 });
