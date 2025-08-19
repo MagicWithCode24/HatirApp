@@ -7,10 +7,6 @@ from botocore.client import Config
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
-# TIMEOUT AYARLARI ARTTIRDIM
-app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 * 1024  # 50GB
-app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
-
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
@@ -24,12 +20,7 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3
             aws_access_key_id=AWS_ACCESS_KEY_ID,
             aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
             region_name=AWS_S3_REGION,
-            config=Config(
-                signature_version='s3v4',
-                retries={'max_attempts': 3},
-                read_timeout=300,  # 5 dakika
-                connect_timeout=60  # 1 dakika
-            )
+            config=Config(signature_version='s3v4')
         )
         print("Amazon S3 istemcisi başarıyla başlatıldı.")
     except Exception as e:
@@ -136,4 +127,4 @@ def upload_audio():
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=False, host='0.0.0.0', port=port, threaded=True)
+    app.run(debug=False, host='0.0.0.0', port=port)
