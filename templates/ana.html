@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script&display=swap" rel="stylesheet">
 </head>
 <body>
+
     <h1>Lütfen İstenilen Bilgileri Giriniz.</h1>
 
     <form method="POST" action="{{ url_for('son') }}" enctype="multipart/form-data" id="mainForm">
@@ -21,6 +22,10 @@
             <div class="upload-box" onclick="document.getElementById('real-file').click();">
                 <p id="uploadText">Yüklemek için buraya tıklayın</p>
                 <div class="upload-preview" id="uploadPreview"></div>
+                <div id="filePreviewProgressBarContainer" style="display:none;">
+                    <div id="filePreviewProgressBar"></div>
+                    <div id="filePreviewProgressText"></div>
+                </div>
             </div>
             <input type="file" name="file" id="real-file" accept="image/*,video/*" multiple style="display: none;">
         </div>
@@ -56,4 +61,3 @@
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
-
