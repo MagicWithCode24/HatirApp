@@ -11,10 +11,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
     const uploadProgressBar = document.getElementById("uploadProgressBar");
     const uploadProgressText = document.getElementById("uploadProgressText");
-    const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
-    const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
-    const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
+    // Mobil cihaz kontrolü
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -91,157 +91,185 @@ document.addEventListener("DOMContentLoaded", function () {
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
 
-    fileInput.addEventListener('change', () => {
-        const newFiles = Array.from(fileInput.files);
-        selectedFiles = newFiles;
+    // Mobil optimizasyon: Image resize fonksiyonu
+    function resizeImageForMobile(file, maxWidth = 1200, quality = 0.85) {
+        return new Promise((resolve) => {
+            if (!file.type.startsWith('image/')) {
+                resolve(file);
+                return;
+            }
 
-        previewContainer.innerHTML = '';
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
 
-        if (selectedFiles.length > 0) {
-            uploadText.style.display = "none";
-            previewContainer.style.minHeight = "100px";
-            filePreviewProgressBarContainer.style.display = 'block';
-            filePreviewProgressBar.style.width = '0%';
-            filePreviewProgressText.textContent = '0%';
-        } else {
-            uploadText.style.display = "block";
-            previewContainer.style.minHeight = "auto";
-            filePreviewProgressBarContainer.style.display = 'none';
+            img.onload = function() {
+                // Orijinal boyutlar
+                let { width, height } = img;
+                
+                // Mobilde daha agresif küçültme
+                const mobileMaxWidth = isMobile ? 800 : maxWidth;
+                
+                if (width > mobileMaxWidth || height > mobileMaxWidth) {
+                    const ratio = Math.min(mobileMaxWidth / width, mobileMaxWidth / height);
+                    width *= ratio;
+                    height *= ratio;
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                canvas.toBlob((blob) => {
+                    const resizedFile = new File([blob], file.name, {
+                        type: file.type,
+                        lastModified: Date.now()
+                    });
+                    console.log(`${file.name}: ${(file.size/1024/1024).toFixed(2)}MB -> ${(resizedFile.size/1024/1024).toFixed(2)}MB`);
+                    resolve(resizedFile);
+                }, file.type, quality);
+                
+                // Memory temizleme
+                URL.revokeObjectURL(img.src);
+            };
+
+            img.src = URL.createObjectURL(file);
+        });
+    }
+
+    // Dosya boyutu ve sayı kontrolü
+    function validateFiles(files) {
+        const maxFileSize = isMobile ? 5 * 1024 * 1024 : 15 * 1024 * 1024; // Mobil: 5MB, Desktop: 15MB
+        const maxFileCount = isMobile ? 6 : 10; // Mobil: 6 dosya, Desktop: 10 dosya
+        
+        if (files.length > maxFileCount) {
+            alert(`${isMobile ? 'Mobil cihazlarda' : 'Bu cihazda'} en fazla ${maxFileCount} dosya seçebilirsiniz.`);
+            return false;
         }
 
-        const maxNormalPreview = 2;
-        const maxOverlayPreview = 3;
-
-        let allPreviews = [];
-        let loadedCount = 0;
-
-        const updateFilePreviewProgress = () => {
-            loadedCount++;
-            const percentComplete = (loadedCount / selectedFiles.length) * 100;
-            filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
-
-            if (loadedCount === selectedFiles.length) {
-                filePreviewProgressBar.style.backgroundColor = '#4CAF50';
-                filePreviewProgressText.textContent = 'Tamamlandı!';
-                setTimeout(() => {
-                    filePreviewProgressBarContainer.style.display = 'none';
-                    filePreviewProgressBar.style.backgroundColor = '#6a0dad';
-                }, 1500);
+        const oversizedFiles = [];
+        for (let file of files) {
+            if (file.size > maxFileSize) {
+                oversizedFiles.push(`${file.name} (${(file.size/1024/1024).toFixed(1)}MB)`);
             }
-        };
+        }
+        
+        if (oversizedFiles.length > 0) {
+            alert(`Bu dosyalar çok büyük (${(maxFileSize/1024/1024)}MB üzeri):\n${oversizedFiles.join('\n')}\n\nLütfen daha küçük dosyalar seçin.`);
+            return false;
+        }
+        return true;
+    }
 
-        selectedFiles.forEach(file => {
-            if (file.type.startsWith("image/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const img = document.createElement("img");
-                        img.src = e.target.result;
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    reader.readAsDataURL(file);
-                }));
-            } else if (file.type.startsWith("video/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const video = document.createElement('video');
-                    video.preload = 'metadata';
-                    video.src = URL.createObjectURL(file);
-                    video.onloadeddata = function() {
-                        video.currentTime = 0;
-                    };
-                    video.onseeked = function() {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-                        const img = document.createElement('img');
-                        img.src = canvas.toDataURL('image/jpeg');
-                        URL.revokeObjectURL(video.src);
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    video.onerror = function() {
-                        console.error("Video yüklenemedi veya işlenemedi:", file.name);
-                        const errorDiv = document.createElement('div');
-                        errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
-                        errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
-                        updateFilePreviewProgress();
-                        resolve(errorDiv);
-                    };
-                }));
-            } else {
-                updateFilePreviewProgress();
-                allPreviews.push(Promise.resolve(null));
-            }
-        });
-
-        Promise.all(allPreviews).then(results => {
-            const validPreviews = results.filter(el => el !== null);
-
-            validPreviews.slice(0, maxNormalPreview).forEach(el => {
-                previewContainer.appendChild(el);
+    // Lightweight preview oluşturma (mobil için optimize)
+    async function createLightweightPreview(file) {
+        if (file.type.startsWith("image/")) {
+            return new Promise(resolve => {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.style.cssText = 'width:80px;height:100px;object-fit:cover;border-radius:8px;border:2px solid #ddd;margin-right:10px;margin-bottom:10px;';
+                    resolve(img);
+                };
+                reader.readAsDataURL(file);
             });
+        } else if (file.type.startsWith("video/")) {
+            // Mobilde video preview'ı basitleştir
+            const videoDiv = document.createElement('div');
+            videoDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #6a0dad;display:flex;align-items:center;justify-content:center;font-size:12px;text-align:center;color:#6a0dad;border-radius:8px;margin-right:10px;margin-bottom:10px;';
+            videoDiv.innerHTML = `📹<br>Video<br>${file.name.substring(0,8)}...`;
+            return Promise.resolve(videoDiv);
+        } else {
+            // Diğer dosya türleri
+            const fileDiv = document.createElement('div');
+            fileDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;border-radius:8px;margin-right:10px;margin-bottom:10px;';
+            fileDiv.innerHTML = `📄<br>${file.name.substring(0,8)}...`;
+            return Promise.resolve(fileDiv);
+        }
+    }
 
-            const totalExtraCount = validPreviews.length - maxNormalPreview;
+    fileInput.addEventListener('change', async () => {
+        const newFiles = Array.from(fileInput.files);
+        
+        // Dosya validasyonu
+        if (!validateFiles(newFiles)) {
+            fileInput.value = '';
+            return;
+        }
 
-            if (totalExtraCount > 0) {
-                const overlayStackContainer = document.createElement("div");
-                overlayStackContainer.className = "overlay-stack-container";
+        // Loading göster
+        previewContainer.innerHTML = '<div style="text-align:center;padding:20px;color:#6a0dad;">📁 Dosyalar hazırlanıyor...</div>';
+        uploadText.style.display = "none";
 
-                const slideDistance = 3.75;
-
-                validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
-                    el.classList.add("overlay");
-                    el.style.left = `${index * slideDistance}px`;
-                    el.style.zIndex = maxOverlayPreview - index;
-                    overlayStackContainer.appendChild(el);
-                });
-
-                if (totalExtraCount > 0) {
-                    const extra = document.createElement("div");
-                    extra.className = "extra-count";
-                    extra.textContent = `+${totalExtraCount}`;
-                    overlayStackContainer.appendChild(extra);
-                }
-                previewContainer.appendChild(overlayStackContainer);
+        try {
+            // Dosyaları resize et (sadece image'lar için)
+            const resizedFiles = [];
+            for (let file of newFiles) {
+                const resizedFile = await resizeImageForMobile(file);
+                resizedFiles.push(resizedFile);
             }
-        });
+            selectedFiles = resizedFiles;
+
+            // Lightweight preview'ları oluştur
+            previewContainer.innerHTML = '';
+            const maxPreview = isMobile ? 6 : 8;
+            
+            for (let i = 0; i < Math.min(selectedFiles.length, maxPreview); i++) {
+                const preview = await createLightweightPreview(selectedFiles[i]);
+                previewContainer.appendChild(preview);
+            }
+
+            // Eğer daha fazla dosya varsa +X göster
+            if (selectedFiles.length > maxPreview) {
+                const extraDiv = document.createElement('div');
+                extraDiv.style.cssText = 'width:80px;height:100px;border:2px solid #6a0dad;background:#6a0dad;color:white;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold;border-radius:8px;margin-right:10px;margin-bottom:10px;';
+                extraDiv.textContent = `+${selectedFiles.length - maxPreview}`;
+                previewContainer.appendChild(extraDiv);
+            }
+
+            console.log(`${selectedFiles.length} dosya hazırlandı. Toplam boyut: ${(selectedFiles.reduce((total, file) => total + file.size, 0) / 1024 / 1024).toFixed(2)}MB`);
+
+        } catch (error) {
+            console.error('Dosya hazırlama hatası:', error);
+            alert('Dosyalar hazırlanırken bir hata oluştu. Lütfen tekrar deneyin.');
+            fileInput.value = '';
+            selectedFiles = [];
+            previewContainer.innerHTML = '';
+            uploadText.style.display = "block";
+        }
     });
 
-    // ESKİ SİSTEM AYNEN KALDI - SADECE TIMEOUT ARTTIRDIM
+    // Optimize edilmiş form submit
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
 
         if (submitBtn) {
-            submitBtn.textContent = 'Yükleniyor...';
+            submitBtn.textContent = 'Gönderiliyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%';
-            uploadProgressText.textContent = '0%';
+            uploadProgressText.textContent = 'Başlıyor...';
             uploadProgressBar.style.backgroundColor = '#6a0dad';
         }
 
         const formData = new FormData(mainForm);
 
-        // Seçilen dosyalar da form verilerine ekleniyor
+        // Resize edilmiş dosyaları ekle
         selectedFiles.forEach(file => {
             formData.append("file", file);
         });
 
         const xhr = new XMLHttpRequest();
 
-        // TIMEOUT ARTTIRDIM: 5 dakika
-        xhr.timeout = 300000; // 5 dakika
+        // Mobil için daha kısa timeout
+        xhr.timeout = isMobile ? 120000 : 180000; // Mobil: 2dk, Desktop: 3dk
 
         xhr.upload.addEventListener('progress', function(event) {
             if (event.lengthComputable) {
                 const percentComplete = (event.loaded / event.total) * 100;
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = `${percentComplete.toFixed(0)}% Yükleniyor...`;
             }
         });
 
@@ -253,32 +281,46 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 setTimeout(() => {
                     window.location.href = mainForm.action;
-                }, 700);
+                }, 1000);
 
             } else {
                 alert('Dosyalar yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
                 console.error('Sunucu yanıtı:', xhr.responseText);
-                submitBtn.textContent = 'Gönder';
-                submitBtn.disabled = false;
-                uploadProgressBarContainer.style.display = 'none';
+                resetSubmitButton();
             }
         });
 
         xhr.addEventListener('error', function() {
-            alert('Ağ hatası veya sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.');
-            submitBtn.textContent = 'Gönder';
-            submitBtn.disabled = false;
-            uploadProgressBarContainer.style.display = 'none';
+            alert('Ağ hatası. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.');
+            resetSubmitButton();
         });
 
         xhr.addEventListener('timeout', function() {
-            alert('Yükleme çok uzun sürdü. Lütfen dosya boyutlarınızı kontrol edin.');
+            alert(`Yükleme zaman aşımına uğradı (${isMobile ? '2' : '3'} dakika). Dosya sayısını veya boyutunu azaltın.`);
+            resetSubmitButton();
+        });
+
+        function resetSubmitButton() {
             submitBtn.textContent = 'Gönder';
             submitBtn.disabled = false;
             uploadProgressBarContainer.style.display = 'none';
-        });
+        }
 
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     });
+
+    // Memory temizleme fonksiyonu
+    function cleanupMemory() {
+        // Eski preview'ları temizle
+        const imgs = previewContainer.querySelectorAll('img');
+        imgs.forEach(img => {
+            if (img.src.startsWith('blob:')) {
+                URL.revokeObjectURL(img.src);
+            }
+        });
+    }
+
+    // Sayfa kapanırken memory temizle
+    window.addEventListener('beforeunload', cleanupMemory);
 });
