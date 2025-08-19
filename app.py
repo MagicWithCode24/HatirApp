@@ -9,7 +9,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
 # MOBİL OPTİMİZASYON: Dosya boyutu limitlerini düşürdüm
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB (50GB çok fazlaydı)
+app.config['MAX_CONTENT_LENGTH'] = 2000 * 1024 * 1024  # 100MB (50GB çok fazlaydı)
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -187,7 +187,7 @@ def upload_audio():
     file_size = audio_file.tell()
     audio_file.seek(0)
     
-    if file_size > 2000 * 1024 * 1024:  # 10MB ses dosyası limiti
+    if file_size > 10 * 1024 * 1024:  # 10MB ses dosyası limiti
         return jsonify(success=False, error="Ses kaydı çok büyük (10MB üzeri)."), 400
     
     timestamp = str(int(time.time()))
@@ -215,3 +215,4 @@ if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     # MOBİL OPTİMİZASYON: Threaded=True performans için önemli
     app.run(debug=False, host='0.0.0.0', port=port, threaded=True)
+
