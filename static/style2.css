@@ -272,33 +272,5 @@ textarea.not-text {
     margin-top: auto;
 }
 
-#filePreviewProgressBarContainer,
-#uploadProgressBarContainer {
-    width: 250px;
-    margin: 10px auto;
-    background-color: #f0f0f0;
-    border-radius: 6px;
-    overflow: hidden;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-    text-align: center;
-    padding: 8px 0;
-}
-
-#filePreviewProgressBar,
-#uploadProgressBar {
-    height: 6px;
-    width: 0%;
-    background-color: #6a0dad;
-    border-radius: 6px;
-    transition: width 0.4s ease;
-}
-
-#filePreviewProgressText,
-#uploadProgressText {
-    margin-top: 5px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #333;
-}
 
 
