@@ -47,7 +47,8 @@ input[type="text"], textarea.not-text {
     font-family: cursive;
 }
 
-input[type="text"]::placeholder, textarea.not-text::placeholder {
+input[type="text"]::placeholder,
+textarea.not-text::placeholder {
     font-family: 'Dancing Script', cursive;
 }
 
@@ -272,6 +273,7 @@ textarea.not-text {
     margin-top: auto;
 }
 
+#filePreviewProgressBarContainer,
 #uploadProgressBarContainer {
     width: 250px;
     margin: 10px auto;
@@ -283,6 +285,7 @@ textarea.not-text {
     padding: 8px 0;
 }
 
+#filePreviewProgressBar,
 #uploadProgressBar {
     height: 6px;
     width: 0%;
@@ -291,6 +294,7 @@ textarea.not-text {
     transition: width 0.4s ease;
 }
 
+#filePreviewProgressText,
 #uploadProgressText {
     margin-top: 5px;
     font-size: 14px;
