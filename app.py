@@ -7,7 +7,6 @@ from botocore.client import Config
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
-# TIMEOUT AYARLARI ARTTIRDIM
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024 * 1024  # 50GB
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 
@@ -77,6 +76,7 @@ def home():
 def ana():
     return render_template('ana.html')
 
+# Ana yükleme endpoint'i
 @app.route('/son', methods=['POST'])
 def son():
     username = request.form.get('name')
@@ -84,55 +84,31 @@ def son():
     uploaded_files = request.files.getlist('file')
 
     if not username:
-        flash('Lütfen bir kullanıcı adı girin!', 'error')
-        return redirect(url_for('ana'))
+        return jsonify(success=False, error='Lütfen bir kullanıcı adı girin!'), 400
 
     if not s3_client:
-        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
-        return redirect(url_for('ana'))
+        return jsonify(success=False, error='Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.'), 500
 
+    # Notu ve her bir dosyayı ayrı ayrı S3'e yükle
     if note_content:
         note_s3_url, note_error = upload_note_to_s3(username, note_content)
         if note_error:
-            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
-        else:
-            flash('Not başarıyla yüklendi.', 'success')
+            print(f'Not yüklenirken bir hata oluştu: {note_error}')
 
     for file in uploaded_files:
         if file and file.filename != '':
             file_s3_url, file_error = upload_file_to_s3(file, username)
             if file_error:
-                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
+                print(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}")
             else:
-                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
-        else:
-            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
+                print(f"'{file.filename}' başarıyla yüklendi.")
 
-    flash('Tüm işlemler tamamlandı!', 'success')
-    return redirect(url_for('son_page'))
+    return jsonify(success=True, message='Tüm işlemler tamamlandı!'), 200
+
 
 @app.route('/son')
 def son_page():
     return render_template('son.html')
-
-@app.route('/upload-audio', methods=['POST'])
-def upload_audio():
-    if 'audio' not in request.files:
-        return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
-    audio_file = request.files['audio']
-    username = request.form.get('name')
-    if not username:
-        return jsonify(success=False, error="Kullanıcı adı eksik."), 400
-    filename = f"{username}_audio.wav"
-    s3_audio_path = f"{username}/{filename}"
-    try:
-        s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
-        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
-        print(f"Ses kaydı S3'e yüklendi: {audio_url}")
-        return jsonify(success=True, url=audio_url), 200
-    except Exception as e:
-        print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
-        return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
