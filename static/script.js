@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let selectedFiles = [];
+    let selectedFiles = []; // Dosyaların saklanacağı dizi
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -93,9 +93,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-        selectedFiles = newFiles;
+        selectedFiles = newFiles; // Mevcut dosyaları yeni seçilenlerle değiştiriyoruz
 
-        previewContainer.innerHTML = '';
+        previewContainer.innerHTML = ''; // Eski önizlemeleri temizle
 
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
@@ -131,6 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
+        // Dosya tipine göre önizleme işlemi
         selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
@@ -179,6 +180,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
+        // Önizlemeleri oluştur
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
 
@@ -212,7 +214,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // ESKİ SİSTEM AYNEN KALDI - SADECE TIMEOUT ARTTIRDIM
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
 
@@ -222,7 +223,7 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBarContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%';
             uploadProgressText.textContent = '0%';
-            uploadProgressBar.style.backgroundColor = '#6a0dad';
+            uploadProgressBar.style.backgroundColor = '#4CAF50';
         }
 
         const formData = new FormData(mainForm);
@@ -233,9 +234,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         const xhr = new XMLHttpRequest();
-
-        // TIMEOUT ARTTIRDIM: 5 dakika
-        xhr.timeout = 300000; // 5 dakika
 
         xhr.upload.addEventListener('progress', function(event) {
             if (event.lengthComputable) {
@@ -266,13 +264,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         xhr.addEventListener('error', function() {
             alert('Ağ hatası veya sunucuya ulaşılamadı. Lütfen internet bağlantınızı kontrol edin.');
-            submitBtn.textContent = 'Gönder';
-            submitBtn.disabled = false;
-            uploadProgressBarContainer.style.display = 'none';
-        });
-
-        xhr.addEventListener('timeout', function() {
-            alert('Yükleme çok uzun sürdü. Lütfen dosya boyutlarınızı kontrol edin.');
             submitBtn.textContent = 'Gönder';
             submitBtn.disabled = false;
             uploadProgressBarContainer.style.display = 'none';
