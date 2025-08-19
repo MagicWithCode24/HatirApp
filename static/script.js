@@ -93,17 +93,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-        selectedFiles = newFiles; // Mevcut dosyaları yeni seçilenlerle değiştiriyoruz
+        selectedFiles = [...selectedFiles, ...newFiles];
 
         previewContainer.innerHTML = ''; // Eski önizlemeleri temizle
 
-        if (selectedFiles.length > 0) {
+         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
             filePreviewProgressBarContainer.style.display = 'block';
             filePreviewProgressBar.style.width = '0%';
             filePreviewProgressText.textContent = '0%';
-        } else {
+        } 
+        else {
             uploadText.style.display = "block";
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
@@ -273,3 +274,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     });
 });
+
