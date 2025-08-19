@@ -11,9 +11,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
     const uploadProgressBar = document.getElementById("uploadProgressBar");
     const uploadProgressText = document.getElementById("uploadProgressText");
-    const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
-    const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
-    const filePreviewProgressText = document.getElementById("filePreviewProgressText");
     const audioPreview = document.getElementById("audioPreview");
 
     micBtn.addEventListener("click", (e) => {
@@ -92,37 +89,16 @@ document.addEventListener("DOMContentLoaded", function () {
         if (filesToPreview.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
-            filePreviewProgressBarContainer.style.display = 'block';
-            filePreviewProgressBar.style.width = '0%';
-            filePreviewProgressText.textContent = '0%';
         } else {
             uploadText.style.display = "block";
             previewContainer.style.minHeight = "auto";
-            filePreviewProgressBarContainer.style.display = 'none';
         }
 
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
 
         let allPreviews = [];
-        let loadedCount = 0;
-
-        const updateFilePreviewProgress = () => {
-            loadedCount++;
-            const percentComplete = (loadedCount / filesToPreview.length) * 100;
-            filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
-
-            if (loadedCount === filesToPreview.length) {
-                filePreviewProgressBar.style.backgroundColor = '#4CAF50';
-                filePreviewProgressText.textContent = 'Tamamlandı!';
-                setTimeout(() => {
-                    filePreviewProgressBarContainer.style.display = 'none';
-                    filePreviewProgressBar.style.backgroundColor = '#6a0dad';
-                }, 1500);
-            }
-        };
-
+        
         filesToPreview.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
@@ -130,7 +106,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     reader.onload = function (e) {
                         const img = document.createElement("img");
                         img.src = e.target.result;
-                        updateFilePreviewProgress();
                         resolve(img);
                     };
                     reader.readAsDataURL(file);
@@ -153,7 +128,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         const img = document.createElement('img');
                         img.src = canvas.toDataURL('image/jpeg');
                         URL.revokeObjectURL(video.src);
-                        updateFilePreviewProgress();
                         resolve(img);
                     };
                     video.onerror = function () {
@@ -161,12 +135,10 @@ document.addEventListener("DOMContentLoaded", function () {
                         const errorDiv = document.createElement('div');
                         errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
                         errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
-                        updateFilePreviewProgress();
                         resolve(errorDiv);
                     };
                 }));
             } else {
-                updateFilePreviewProgress();
                 allPreviews.push(Promise.resolve(null));
             }
         });
