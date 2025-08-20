@@ -5,6 +5,16 @@ import boto3
 from botocore.client import Config
 
 app = Flask(__name__)
+
+# Flask'in toplam istek boyutu limiti (3 GB)
+# 1 GB = 1024 * 1024 * 1024 = 1073741824 bytes
+# 3 GB = 3 * 1073741824 = 3221225472 bytes
+app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024 * 1024
+
+# Her bir dosya için dosya boyutu limiti (30 MB)
+# 30 MB = 30 * 1024 * 1024 = 31457280 bytes
+MAX_FILE_SIZE = 30 * 1024 * 1024
+
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -32,12 +42,23 @@ else:
 def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
+    
+    # Dosya boyutunu kontrol et
+    # file.seek(0, os.SEEK_END) ile dosyanın boyutunu al
+    # Ardından dosyanın başına dönmek için file.seek(0) kullan
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    
+    if file_size > MAX_FILE_SIZE:
+        return None, f"Dosya boyutu {MAX_FILE_SIZE / 1024 / 1024:.2f} MB'den büyük olamaz."
+
     filename = secure_filename(file.filename)
     s3_file_path = f"{username}/{filename}"
     try:
         s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
         print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
-        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
+        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}[.amazonaws.com/](https://.amazonaws.com/){s3_file_path}", None
     except Exception as e:
         print(f"Hata: '{filename}' S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 yükleme hatası: {e}"
@@ -55,7 +76,7 @@ def upload_note_to_s3(username, note_content):
             ContentType='text/plain'
         )
         print(f"Not dosyası S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_note_path}")
-        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_note_path}", None
+        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}[.amazonaws.com/](https://.amazonaws.com/){s3_note_path}", None
     except Exception as e:
         print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 not yükleme hatası: {e}"
@@ -118,7 +139,7 @@ def upload_audio():
     s3_audio_path = f"{username}/{filename}"
     try:
         s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
-        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
+        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}[.amazonaws.com/](https://.amazonaws.com/){s3_audio_path}"
         print(f"Ses kaydı S3'e yüklendi: {audio_url}")
         return jsonify(success=True, url=audio_url), 200
     except Exception as e:
