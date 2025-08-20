@@ -218,7 +218,6 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBarContainer.style.display = 'block';
         }
 
-        // Eğer hiç dosya yoksa, direkt formu gönder
         if (selectedFiles.length === 0) {
             mainForm.submit();
             return;
@@ -226,6 +225,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         let uploadedFilePromises = [];
         let completedFilesCount = 0;
+        let totalBytesLoaded = 0;
+        let totalBytesToLoad = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+
+        const updateOverallProgress = (fileLoadedBytes) => {
+            totalBytesLoaded += fileLoadedBytes;
+            const percentComplete = (totalBytesLoaded / totalBytesToLoad) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = `Yükleniyor... (${completedFilesCount} / ${totalFilesToUpload})`;
+        };
 
         selectedFiles.forEach(file => {
             const formData = new FormData();
@@ -235,13 +243,17 @@ document.addEventListener("DOMContentLoaded", function () {
             const xhr = new XMLHttpRequest();
             const promise = new Promise((resolve, reject) => {
                 xhr.upload.addEventListener('progress', function(event) {
-                    // Bu kısım kaldırıldı, çünkü toplam ilerleme için aşağıdaki döngü kullanılacak
+                    if (event.lengthComputable) {
+                         const fileProgress = event.loaded;
+                         // Yükleme çubuğu için toplam ilerlemeyi güncelle
+                         updateOverallProgress(fileProgress);
+                    }
                 });
                 xhr.addEventListener('load', function() {
                     const response = JSON.parse(xhr.responseText);
                     if (response.success) {
                         completedFilesCount++;
-                        updateOverallProgress();
+                        updateOverallProgress(0); // Bu dosyayı tamamlanmış olarak işaretle
                         resolve(response);
                     } else {
                         reject(new Error(response.message || "Dosya yüklenemedi."));
@@ -256,15 +268,8 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadedFilePromises.push(promise);
         });
 
-        const updateOverallProgress = () => {
-            const percentComplete = (completedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = `Yükleniyor... (${completedFilesCount} / ${totalFilesToUpload})`;
-        };
-
         try {
             await Promise.all(uploadedFilePromises);
-            // Tüm yüklemeler bittiğinde
             uploadProgressBar.style.width = '100%';
             uploadProgressText.textContent = `Yükleme Tamamlandı ${totalFilesToUpload} / ${totalFilesToUpload}`;
             setTimeout(() => {
