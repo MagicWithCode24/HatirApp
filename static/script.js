@@ -2,8 +2,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = []; // Dosyaların saklanacağı dizi
-    let uploadedFilesCount = 0; // Arka planda yüklenen dosyalar
-    let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -105,7 +103,7 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
-        totalFilesToUpload = selectedFiles.length;
+        const totalFilesToPreview = selectedFiles.length;
 
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
@@ -127,10 +125,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const updateFilePreviewProgress = () => {
             loadedCount++;
-            const percentComplete = (loadedCount / selectedFiles.length) * 100;
+            const percentComplete = (loadedCount / totalFilesToPreview) * 100;
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (loadedCount === selectedFiles.length) {
+            if (loadedCount === totalFilesToPreview) {
                 setTimeout(() => {
                     filePreviewProgressBarContainer.style.display = 'none';
                 }, 500);
@@ -214,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // Yeni FormData nesnesi oluştur ve tüm dosyaları ekle
         const formData = new FormData(mainForm);
         selectedFiles.forEach((file, index) => {
-            formData.append(`file-${index}`, file, file.name); // Her dosyaya benzersiz bir isim veriyoruz
+            formData.append(`file-${index}`, file, file.name); 
         });
 
         // Diğer form verilerini ekle
@@ -234,14 +232,14 @@ document.addEventListener("DOMContentLoaded", function () {
             if (event.lengthComputable) {
                 const percentComplete = (event.loaded / event.total) * 100;
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = `Yükleniyor... ${percentComplete.toFixed(0)}%`; // Burayı güncelledim
             }
         });
 
         xhr.addEventListener('load', function() {
             // Yükleme başarılı olduğunda yönlendirme yap
             uploadProgressBar.style.width = '100%';
-            uploadProgressText.textContent = '100%';
+            uploadProgressText.textContent = `Yükleme Tamamlandı %100`; // Burayı güncelledim
             const response = JSON.parse(xhr.responseText);
             if (response.success) {
                  setTimeout(() => { window.location.href = mainForm.action; }, 500);
