@@ -227,10 +227,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
             uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
             uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (uploadedFilesCount === totalFilesToUpload) {
-                // Tüm yüklemeler tamamlandı
-                setTimeout(() => { window.location.href = mainForm.action; }, 500);
-            }
+            
+            // OTOMATIK YÖNLENDİRME KALDIRILDI - Sadece progress bar güncellemesi yapılıyor
+            console.log(`Dosya yüklendi: ${uploadedFilesCount}/${totalFilesToUpload}`);
         });
         xhr.addEventListener('error', function() {
             console.error("Dosya yükleme hatası:", file.name);
@@ -242,15 +241,17 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- Gönder Butonu ---------- //
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-        // Eğer yüklemeler zaten tamamlandıysa direkt yönlendir
-        if (uploadedFilesCount === totalFilesToUpload) {
-            window.location.href = mainForm.action;
-        }
-        // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
+        
+        // SADECE GÖNDER BUTONUNA BASILDIĞINDA YÖNLENDİRME YAPILACAK
+        // Kullanıcının buton basmasını bekle, sonra yönlendir
+        setTimeout(() => { 
+            window.location.href = mainForm.action; 
+        }, 500);
     });
 });
