@@ -208,49 +208,70 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
-
-        // ---------- Arka planda S3 Yükleme ---------- //
-        selectedFiles.forEach(file => uploadFileToS3(file));
     });
 
     function uploadFileToS3(file) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
+        return new Promise((resolve, reject) => {
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("name", document.querySelector("input[name='name']").value);
 
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function(event) {
-            // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
+            const xhr = new XMLHttpRequest();
+            xhr.upload.addEventListener('progress', function(event) {
+                // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
+            });
+            xhr.addEventListener('load', function() {
+                resolve();
+            });
+            xhr.addEventListener('error', function() {
+                console.error("Dosya yükleme hatası:", file.name);
+                reject(new Error("Dosya yüklenemedi."));
+            });
+            xhr.open('POST', mainForm.action);
+            xhr.send(formData);
         });
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (uploadedFilesCount === totalFilesToUpload) {
-                // Tüm yüklemeler tamamlandı
-                setTimeout(() => { window.location.href = mainForm.action; }, 500);
-            }
-        });
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-        });
-        xhr.open('POST', mainForm.action);
-        xhr.send(formData);
     }
 
     // ---------- Gönder Butonu ---------- //
-    mainForm.addEventListener('submit', function(e) {
+    mainForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-        // Eğer yüklemeler zaten tamamlandıysa direkt yönlendir
-        if (uploadedFilesCount === totalFilesToUpload) {
+        
+        uploadedFilesCount = 0;
+        totalFilesToUpload = selectedFiles.length;
+
+        // Yüklemeye başlamadan önce bir kontrol yap
+        if (totalFilesToUpload === 0) {
+            // Hiç dosya seçilmediyse formu direkt gönder
             window.location.href = mainForm.action;
+            return;
         }
-        // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
+
+        const uploadPromises = selectedFiles.map(file => uploadFileToS3(file));
+
+        try {
+            await Promise.all(uploadPromises);
+            
+            // Tüm yüklemeler tamamlandı
+            uploadProgressBar.style.width = '100%';
+            uploadProgressText.textContent = '100%';
+            setTimeout(() => {
+                window.location.href = mainForm.action;
+            }, 500);
+        } catch (error) {
+            console.error("Yükleme sırasında bir hata oluştu:", error);
+            // Hata mesajı göster
+            const msgBox = document.createElement('div');
+            msgBox.textContent = 'Dosya yüklenirken bir hata oluştu.';
+            msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
+            document.body.appendChild(msgBox);
+            setTimeout(() => msgBox.remove(), 3000);
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+        }
     });
 });
