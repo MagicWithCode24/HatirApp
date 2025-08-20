@@ -1,9 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let selectedFiles = []; // Dosyaların saklanacağı dizi
-    let uploadedFilesCount = 0; // Arka planda yüklenen dosyalar
+    let selectedFiles = [];
+    let uploadedFilesCount = 0;
     let totalFilesToUpload = 0;
+
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -17,7 +18,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // ---------- Mikrofon Kaydı ---------- //
+    // ---------- Mikrofon Paneli ---------- //
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -31,14 +32,13 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
             audioChunks = [];
-    
+
             mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
-    
+
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-    
-                // Önizleme hemen gösteriliyor
+
                 const previewArea = document.getElementById("audioPreview");
                 previewArea.innerHTML = "";
                 const audio = document.createElement("audio");
@@ -48,19 +48,20 @@ document.addEventListener("DOMContentLoaded", function () {
                 label.textContent = "Kaydınız:";
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
-    
+
                 // Arka planda S3 yüklemesi
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
+
                 fetch("/upload-audio", { method: "POST", body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (!data.success) console.error("Ses yükleme hatası:", data.error);
-                })
-                .catch(err => console.error("AJAX hata:", err));
+                    .then(res => res.json())
+                    .then(data => {
+                        if (!data.success) console.error("Ses yükleme hatası:", data.error);
+                    })
+                    .catch(err => console.error("AJAX hata:", err));
             });
-    
+
             startBtn.disabled = true;
             stopBtn.disabled = false;
         } catch (err) {
@@ -68,7 +69,6 @@ document.addEventListener("DOMContentLoaded", function () {
             console.error(err);
         }
     });
-
 
     stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -112,9 +112,7 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
             if (loadedCount === selectedFiles.length) {
-                setTimeout(() => {
-                    filePreviewProgressBarContainer.style.display = 'none';
-                }, 500);
+                setTimeout(() => { filePreviewProgressBarContainer.style.display = 'none'; }, 500);
             }
         };
 
@@ -187,7 +185,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // ---------- Arka planda S3 Yükleme ---------- //
+        // ---------- Arka Planda S3 Çoklu Dosya Yükleme ---------- //
         selectedFiles.forEach(file => uploadFileToS3(file));
     });
 
@@ -198,7 +196,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
-            // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
+            // Burada her dosya ilerlemesini ayrı gösterebiliriz
         });
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
@@ -206,18 +204,17 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
             uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             if (uploadedFilesCount === totalFilesToUpload) {
-                // Tüm yüklemeler tamamlandı
                 setTimeout(() => { window.location.href = mainForm.action; }, 500);
             }
         });
         xhr.addEventListener('error', function() {
             console.error("Dosya yükleme hatası:", file.name);
         });
-        xhr.open('POST', mainForm.action);
+        xhr.open('POST', "/upload-files"); // app.py'deki çoklu dosya route
         xhr.send(formData);
     }
 
-    // ---------- Gönder Butonu ---------- //
+    // ---------- Form Submit ---------- //
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         if (submitBtn) {
@@ -225,11 +222,8 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-        // Eğer yüklemeler zaten tamamlandıysa direkt yönlendir
         if (uploadedFilesCount === totalFilesToUpload) {
             window.location.href = mainForm.action;
         }
-        // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
     });
 });
-
