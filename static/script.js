@@ -60,6 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         previewArea.appendChild(label);
                         previewArea.appendChild(audio);
                     } else {
+                        // Mesaj kutusu kullan
                         const msgBox = document.createElement('div');
                         msgBox.textContent = 'Ses kaydınız yüklenemedi.';
                         msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -69,6 +70,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .catch(error => {
                     console.error("Ses yükleme hatası:", error);
+                    // Mesaj kutusu kullan
                     const msgBox = document.createElement('div');
                     msgBox.textContent = 'Ses kaydı yüklenirken bir hata oluştu.';
                     msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -81,6 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
             stopBtn.disabled = false;
         } catch (err) {
             console.error("Mikrofon erişim hatası:", err);
+            // Mesaj kutusu kullan
             const msgBox = document.createElement('div');
             msgBox.textContent = 'Mikrofon erişimi reddedildi veya bir hata oluştu.';
             msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -205,85 +208,49 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
+
+        // ---------- Arka planda S3 Yükleme ---------- //
+        selectedFiles.forEach(file => uploadFileToS3(file));
     });
 
-    // ---------- Gönder Butonu ---------- //
-    mainForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
+    function uploadFileToS3(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
 
-        // Yükleme paneli ve butonu güncelle
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function(event) {
+            // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
+        });
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            if (uploadedFilesCount === totalFilesToUpload) {
+                // Tüm yüklemeler tamamlandı
+                setTimeout(() => { window.location.href = mainForm.action; }, 500);
+            }
+        });
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+        });
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
+    }
+
+    // ---------- Gönder Butonu ---------- //
+    mainForm.addEventListener('submit', function(e) {
+        e.preventDefault();
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-
-        if (selectedFiles.length === 0) {
-            mainForm.submit();
-            return;
+        // Eğer yüklemeler zaten tamamlandıysa direkt yönlendir
+        if (uploadedFilesCount === totalFilesToUpload) {
+            window.location.href = mainForm.action;
         }
-
-        let uploadedFilePromises = [];
-        let completedFilesCount = 0;
-        let totalBytesLoaded = 0;
-        let totalBytesToLoad = selectedFiles.reduce((sum, file) => sum + file.size, 0);
-
-        const updateOverallProgress = (fileLoadedBytes) => {
-            totalBytesLoaded += fileLoadedBytes;
-            const percentComplete = (totalBytesLoaded / totalBytesToLoad) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = `Yükleniyor... (${completedFilesCount} / ${totalFilesToUpload})`;
-        };
-
-        selectedFiles.forEach(file => {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("name", document.querySelector("input[name='name']").value);
-
-            const xhr = new XMLHttpRequest();
-            const promise = new Promise((resolve, reject) => {
-                xhr.upload.addEventListener('progress', function(event) {
-                    if (event.lengthComputable) {
-                         const fileProgress = event.loaded;
-                         // Yükleme çubuğu için toplam ilerlemeyi güncelle
-                         updateOverallProgress(fileProgress);
-                    }
-                });
-                xhr.addEventListener('load', function() {
-                    const response = JSON.parse(xhr.responseText);
-                    if (response.success) {
-                        completedFilesCount++;
-                        updateOverallProgress(0); // Bu dosyayı tamamlanmış olarak işaretle
-                        resolve(response);
-                    } else {
-                        reject(new Error(response.message || "Dosya yüklenemedi."));
-                    }
-                });
-                xhr.addEventListener('error', function() {
-                    reject(new Error("Ağ bağlantı hatası."));
-                });
-                xhr.open('POST', mainForm.action);
-                xhr.send(formData);
-            });
-            uploadedFilePromises.push(promise);
-        });
-
-        try {
-            await Promise.all(uploadedFilePromises);
-            uploadProgressBar.style.width = '100%';
-            uploadProgressText.textContent = `Yükleme Tamamlandı ${totalFilesToUpload} / ${totalFilesToUpload}`;
-            setTimeout(() => {
-                window.location.href = mainForm.action;
-            }, 500);
-        } catch (error) {
-            console.error("Yükleme sırasında hata oluştu:", error);
-            const msgBox = document.createElement('div');
-            msgBox.textContent = 'Dosya yüklenirken bir hata oluştu.';
-            msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
-            document.body.appendChild(msgBox);
-            setTimeout(() => msgBox.remove(), 3000);
-            submitBtn.textContent = 'Gönder';
-            submitBtn.disabled = false;
-        }
+        // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
     });
 });
