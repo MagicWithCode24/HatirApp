@@ -6,8 +6,15 @@ from botocore.client import Config
 
 app = Flask(__name__)
 
+# Flask'in toplam istek boyutu limiti (3 GB)
+# 1 GB = 1024 * 1024 * 1024 = 1073741824 bytes
+# 3 GB = 3 * 1073741824 = 3221225472 bytes
 app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024 * 1024
+
+# Her bir dosya için dosya boyutu limiti (30 MB)
+# 30 MB = 30 * 1024 * 1024 = 31457280 bytes
 MAX_FILE_SIZE = 30 * 1024 * 1024
+
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -36,6 +43,9 @@ def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
     
+    # Dosya boyutunu kontrol et
+    # file.seek(0, os.SEEK_END) ile dosyanın boyutunu al
+    # Ardından dosyanın başına dönmek için file.seek(0) kullan
     file.seek(0, os.SEEK_END)
     file_size = file.tell()
     file.seek(0)
@@ -47,8 +57,10 @@ def upload_file_to_s3(file, username):
     s3_file_path = f"{username}/{filename}"
     try:
         s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
+        print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
         return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
     except Exception as e:
+        print(f"Hata: '{filename}' S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 yükleme hatası: {e}"
 
 def upload_note_to_s3(username, note_content):
@@ -63,8 +75,10 @@ def upload_note_to_s3(username, note_content):
             Body=note_content.encode('utf-8'),
             ContentType='text/plain'
         )
+        print(f"Not dosyası S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_note_path}")
         return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_note_path}", None
     except Exception as e:
+        print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 not yükleme hatası: {e}"
 
 @app.route('/')
@@ -86,7 +100,7 @@ def son():
         return redirect(url_for('ana'))
 
     if not s3_client:
-        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı.', 'error')
+        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
         return redirect(url_for('ana'))
 
     if note_content:
@@ -103,6 +117,8 @@ def son():
                 flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
             else:
                 flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
+        else:
+            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
     flash('Tüm işlemler tamamlandı!', 'success')
     return redirect(url_for('son_page'))
@@ -110,6 +126,25 @@ def son():
 @app.route('/son')
 def son_page():
     return render_template('son.html')
+
+@app.route('/upload-audio', methods=['POST'])
+def upload_audio():
+    if 'audio' not in request.files:
+        return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
+    audio_file = request.files['audio']
+    username = request.form.get('name')
+    if not username:
+        return jsonify(success=False, error="Kullanıcı adı eksik."), 400
+    filename = f"{username}_audio.wav"
+    s3_audio_path = f"{username}/{filename}"
+    try:
+        s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
+        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
+        print(f"Ses kaydı S3'e yüklendi: {audio_url}")
+        return jsonify(success=True, url=audio_url), 200
+    except Exception as e:
+        print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
+        return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
