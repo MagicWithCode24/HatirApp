@@ -23,6 +23,7 @@ document.addEventListener("DOMContentLoaded", function () {
         recordPanel.classList.toggle("active");
     });
 
+    // ---------- Ses Kaydı ---------- //
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
@@ -30,52 +31,44 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
             audioChunks = [];
-
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
-
+    
+            mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
+    
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-
+    
+                // Önizleme hemen gösteriliyor
+                const previewArea = document.getElementById("audioPreview");
+                previewArea.innerHTML = "";
+                const audio = document.createElement("audio");
+                audio.controls = true;
+                audio.src = audioUrl;
+                const label = document.createElement("p");
+                label.textContent = "Kaydınız:";
+                previewArea.appendChild(label);
+                previewArea.appendChild(audio);
+    
+                // Arka planda S3 yüklemesi
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
-
-                fetch("/upload-audio", {
-                    method: "POST",
-                    body: formData
-                })
-                .then(response => response.json())
+                fetch("/upload-audio", { method: "POST", body: formData })
+                .then(res => res.json())
                 .then(data => {
-                    if (data.success) {
-                        const previewArea = document.getElementById("audioPreview");
-                        previewArea.innerHTML = "";
-                        const audio = document.createElement("audio");
-                        audio.controls = true;
-                        audio.src = audioUrl;
-                        const label = document.createElement("p");
-                        label.textContent = "Kaydınız:";
-                        previewArea.appendChild(label);
-                        previewArea.appendChild(audio);
-                    } else {
-                        alert("Ses kaydınız yüklenemedi.");
-                    }
+                    if (!data.success) console.error("Ses yükleme hatası:", data.error);
                 })
-                .catch(error => {
-                    console.error("Ses yükleme hatası:", error);
-                    alert("Ses kaydı yüklenirken bir hata oluştu.");
-                });
+                .catch(err => console.error("AJAX hata:", err));
             });
-
+    
             startBtn.disabled = true;
             stopBtn.disabled = false;
         } catch (err) {
-            console.error("Mikrofon erişim hatası:", err);
             alert("Mikrofon erişimi reddedildi veya bir hata oluştu.");
+            console.error(err);
         }
     });
+
 
     stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
@@ -239,3 +232,4 @@ document.addEventListener("DOMContentLoaded", function () {
         // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
     });
 });
+
