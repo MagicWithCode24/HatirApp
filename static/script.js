@@ -197,8 +197,7 @@ document.addEventListener("DOMContentLoaded", function () {
     formData.append("note", noteContent);
 
     selectedFiles.forEach(file => {
-        const uniqueFile = new File([file], `${Date.now()}_${file.name}`, { type: file.type });
-        formData.append("file", uniqueFile);
+        formData.append("file", new File([file], `${Date.now()}_${file.name}`, { type: file.type }));
     });
 
     const xhr = new XMLHttpRequest();
@@ -226,6 +225,7 @@ document.addEventListener("DOMContentLoaded", function () {
     xhr.open('POST', mainForm.action);
     xhr.send(formData);
 });
+
 
 
 
