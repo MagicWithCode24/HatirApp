@@ -16,10 +16,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
-    
-    // --- Yeni eklendi ---
-    let uploadQueue = [];
-    let isUploading = false;
 
     // ---------- Mikrofon Kaydı ---------- //
     micBtn.addEventListener("click", (e) => {
@@ -209,83 +205,70 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
-
-        // ---------- Arka planda S3 Yükleme (yeni mantık) ---------- //
-        startUploadQueue();
     });
-
-    function uploadFileToS3(file) {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("name", document.querySelector("input[name='name']").value);
-
-            const xhr = new XMLHttpRequest();
-            xhr.upload.addEventListener('progress', function(event) {
-                // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
-            });
-            xhr.addEventListener('load', function() {
-                resolve();
-            });
-            xhr.addEventListener('error', function() {
-                console.error("Dosya yükleme hatası:", file.name);
-                reject(new Error("Dosya yüklenemedi."));
-            });
-            xhr.open('POST', mainForm.action);
-            xhr.send(formData);
-        });
-    }
-
-    async function startUploadQueue() {
-        if (isUploading) return;
-        isUploading = true;
-
-        while(selectedFiles.length > uploadedFilesCount) {
-            const fileToUpload = selectedFiles[uploadedFilesCount];
-            try {
-                await uploadFileToS3(fileToUpload);
-                uploadedFilesCount++;
-            } catch (error) {
-                console.error("Bir dosya yüklenirken hata oluştu:", error);
-                // Hata durumunda yükleme barını güncelleyebilir veya durdurabilirsin
-            }
-        }
-        isUploading = false;
-    }
 
     // ---------- Gönder Butonu ---------- //
     mainForm.addEventListener('submit', async function(e) {
         e.preventDefault();
-        
+
+        // Yeni FormData nesnesi oluştur ve tüm dosyaları ekle
+        const formData = new FormData(mainForm);
+        selectedFiles.forEach((file, index) => {
+            formData.append(`file-${index}`, file, file.name); // Her dosyaya benzersiz bir isim veriyoruz
+        });
+
+        // Diğer form verilerini ekle
+        formData.append("name", document.querySelector("input[name='name']").value);
+
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
+        
+        // Yükleme işlemini başlat
+        const xhr = new XMLHttpRequest();
 
-        const updateProgressBar = () => {
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-        };
+        // İlerleme çubuğunu güncelle
+        xhr.upload.addEventListener('progress', function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            }
+        });
 
-        // Eğer yükleme zaten bittiyse direkt yönlendir
-        if (uploadedFilesCount === totalFilesToUpload) {
+        xhr.addEventListener('load', function() {
+            // Yükleme başarılı olduğunda yönlendirme yap
             uploadProgressBar.style.width = '100%';
             uploadProgressText.textContent = '100%';
-            setTimeout(() => { window.location.href = mainForm.action; }, 500);
-            return;
-        }
-
-        // Yükleme bitmediyse, bitene kadar bekle
-        const interval = setInterval(() => {
-            updateProgressBar();
-            if (uploadedFilesCount === totalFilesToUpload) {
-                clearInterval(interval);
-                setTimeout(() => {
-                    window.location.href = mainForm.action;
-                }, 500);
+            const response = JSON.parse(xhr.responseText);
+            if (response.success) {
+                 setTimeout(() => { window.location.href = mainForm.action; }, 500);
+            } else {
+                console.error("Sunucu hatası:", response.message);
+                const msgBox = document.createElement('div');
+                msgBox.textContent = 'Yükleme başarısız oldu.';
+                msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
+                document.body.appendChild(msgBox);
+                setTimeout(() => msgBox.remove(), 3000);
+                submitBtn.textContent = 'Gönder';
+                submitBtn.disabled = false;
             }
-        }, 200);
+        });
+
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası: Ağ bağlantısı veya sunucu sorunu");
+            const msgBox = document.createElement('div');
+            msgBox.textContent = 'Ağ bağlantı hatası oluştu.';
+            msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
+            document.body.appendChild(msgBox);
+            setTimeout(() => msgBox.remove(), 3000);
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+        });
+
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
     });
 });
