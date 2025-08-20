@@ -185,34 +185,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // ---------- Arka Planda S3 Çoklu Dosya Yükleme ---------- //
-        selectedFiles.forEach(file => uploadFileToS3(file));
+        // ---------- Arka Planda S3 Çoklu Dosya Yükleme (tek seferde) ---------- //
+        if (selectedFiles.length > 0) {
+            const formData = new FormData();
+            selectedFiles.forEach(file => formData.append("file", file));
+            formData.append("name", document.querySelector("input[name='name']").value);
+
+            fetch("/upload-files", { method: "POST", body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) console.error("Bazı dosyalar yüklenemedi:", data.errors);
+                    else console.log("Tüm dosyalar yüklendi:", data.uploaded);
+                    // Yükleme barını %100 yap
+                    uploadProgressBar.style.width = '100%';
+                    uploadProgressText.textContent = '100%';
+                    setTimeout(() => { window.location.href = mainForm.action; }, 500);
+                })
+                .catch(err => console.error("Dosya yükleme hatası:", err));
+        }
     });
-
-    function uploadFileToS3(file) {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
-
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function(event) {
-            // Burada her dosya ilerlemesini ayrı gösterebiliriz
-        });
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (uploadedFilesCount === totalFilesToUpload) {
-                setTimeout(() => { window.location.href = mainForm.action; }, 500);
-            }
-        });
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-        });
-        xhr.open('POST', "/upload-files"); // app.py'deki çoklu dosya route
-        xhr.send(formData);
-    }
 
     // ---------- Form Submit ---------- //
     mainForm.addEventListener('submit', function(e) {
