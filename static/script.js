@@ -26,41 +26,46 @@ document.addEventListener("DOMContentLoaded", function () {
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
+            // Mikrofon erişimi al
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    
+            // MediaRecorder başlat
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
             audioChunks = [];
-
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
-
+    
+            // Veri geldiğinde kaydet
+            mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
+    
+            // Kayıt durduğunda
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-
+    
+                // Önizlemeyi hemen göster
+                const previewArea = document.getElementById("audioPreview");
+                previewArea.innerHTML = "";
+                const audio = document.createElement("audio");
+                audio.controls = true;
+                audio.src = audioUrl;
+                const label = document.createElement("p");
+                label.textContent = "Kaydınız:";
+                previewArea.appendChild(label);
+                previewArea.appendChild(audio);
+    
+                // Arka planda sunucuya yükleme
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
-
+    
                 fetch("/upload-audio", {
                     method: "POST",
                     body: formData
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        const previewArea = document.getElementById("audioPreview");
-                        previewArea.innerHTML = "";
-                        const audio = document.createElement("audio");
-                        audio.controls = true;
-                        audio.src = audioUrl;
-                        const label = document.createElement("p");
-                        label.textContent = "Kaydınız:";
-                        previewArea.appendChild(label);
-                        previewArea.appendChild(audio);
-                    } else {
-                        // Mesaj kutusu kullan
+                    if (!data.success) {
+                        // Başarısızsa kullanıcıya mesaj
                         const msgBox = document.createElement('div');
                         msgBox.textContent = 'Ses kaydınız yüklenemedi.';
                         msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -70,7 +75,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .catch(error => {
                     console.error("Ses yükleme hatası:", error);
-                    // Mesaj kutusu kullan
                     const msgBox = document.createElement('div');
                     msgBox.textContent = 'Ses kaydı yüklenirken bir hata oluştu.';
                     msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -78,6 +82,19 @@ document.addEventListener("DOMContentLoaded", function () {
                     setTimeout(() => msgBox.remove(), 3000);
                 });
             });
+    
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+        } catch (err) {
+            console.error("Mikrofon erişim hatası:", err);
+            const msgBox = document.createElement('div');
+            msgBox.textContent = 'Mikrofon erişimi reddedildi veya bir hata oluştu.';
+            msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
+            document.body.appendChild(msgBox);
+            setTimeout(() => msgBox.remove(), 3000);
+        }
+    });
+
 
             startBtn.disabled = true;
             stopBtn.disabled = false;
@@ -254,3 +271,4 @@ document.addEventListener("DOMContentLoaded", function () {
         // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
     });
 });
+
