@@ -1,10 +1,10 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let selectedFiles = []; // Dosyaların saklanacağı dizi
-    let uploadedFilesCount = 0; // Arka planda yüklenen dosyalar
+    let selectedFiles = [];
+    let uploadedFilesCount = 0;
     let totalFilesToUpload = 0;
-    let isSubmitClicked = false; // Gönder butonuna basılıp basılmadığını kontrol eden değişken
+    let isSubmitClicked = false;
     
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
@@ -19,7 +19,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // ---------- Mikrofon Kaydı ---------- //
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -41,6 +40,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
 
+                const previewArea = document.getElementById("audioPreview");
+                previewArea.innerHTML = "";
+                const audio = document.createElement("audio");
+                audio.controls = true;
+                audio.src = audioUrl;
+                const label = document.createElement("p");
+                label.textContent = "Kaydınız:";
+                previewArea.appendChild(label);
+                previewArea.appendChild(audio);
+
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
@@ -51,18 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (data.success) {
-                        const previewArea = document.getElementById("audioPreview");
-                        previewArea.innerHTML = "";
-                        const audio = document.createElement("audio");
-                        audio.controls = true;
-                        audio.src = audioUrl;
-                        const label = document.createElement("p");
-                        label.textContent = "Kaydınız:";
-                        previewArea.appendChild(label);
-                        previewArea.appendChild(audio);
-                    } else {
-                        // Mesaj kutusu kullan
+                    if (!data.success) {
                         const msgBox = document.createElement('div');
                         msgBox.textContent = 'Ses kaydınız yüklenemedi.';
                         msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -72,7 +70,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .catch(error => {
                     console.error("Ses yükleme hatası:", error);
-                    // Mesaj kutusu kullan
                     const msgBox = document.createElement('div');
                     msgBox.textContent = 'Ses kaydı yüklenirken bir hata oluştu.';
                     msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -85,7 +82,6 @@ document.addEventListener("DOMContentLoaded", function () {
             stopBtn.disabled = false;
         } catch (err) {
             console.error("Mikrofon erişim hatası:", err);
-            // Mesaj kutusu kullan
             const msgBox = document.createElement('div');
             msgBox.textContent = 'Mikrofon erişimi reddedildi veya bir hata oluştu.';
             msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -102,7 +98,6 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    // ---------- Dosya Seçimi ve Önizleme ---------- //
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -111,7 +106,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
         totalFilesToUpload = selectedFiles.length;
-        uploadedFilesCount = 0; // Reset counter when new files are selected
+        uploadedFilesCount = 0;
 
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
@@ -212,7 +207,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // ---------- Arka planda S3 Yükleme ---------- //
         selectedFiles.forEach(file => uploadFileToS3(file));
     });
 
@@ -223,11 +217,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
-            // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
         });
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
-            // Sadece gönder butonuna basılmışsa yükleme progress bar'ını göster
             if (isSubmitClicked) {
                 const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
@@ -248,28 +240,23 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 
-    // ---------- Gönder Butonu ---------- //
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        isSubmitClicked = true; // Gönder butonuna basıldığını işaretle
+        isSubmitClicked = true;
         
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
         }
 
-        // Eğer tüm yüklemeler zaten tamamlandıysa direkt yönlendir
         if (uploadedFilesCount === totalFilesToUpload && totalFilesToUpload > 0) {
             window.location.href = mainForm.action;
         } 
-        // Eğer hiç dosya seçilmemişse de direkt yönlendir
         else if (totalFilesToUpload === 0) {
             window.location.href = mainForm.action;
         }
-        // Yüklemeler devam ediyorsa progress bar'ı göster
         else {
             uploadProgressBarContainer.style.display = 'block';
-            // Mevcut yükleme durumunu progress bar'a yansıt
             const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
             uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
             uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
