@@ -203,6 +203,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function uploadFile(file) {
         const formData = new FormData();
         formData.append("file", file);
+        formData.append("note", document.querySelector("textarea[name='note']").value);
         formData.append("name", document.querySelector("input[name='name']").value);
 
         const xhr = new XMLHttpRequest();
@@ -231,3 +232,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
