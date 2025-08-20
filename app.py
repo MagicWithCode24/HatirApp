@@ -6,13 +6,8 @@ from botocore.client import Config
 
 app = Flask(__name__)
 
-# Flask'in toplam istek boyutu limiti (3 GB)
-# 1 GB = 1024 * 1024 * 1024 = 1073741824 bytes
-# 3 GB = 3 * 1073741824 = 3221225472 bytes
 app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024 * 1024
 
-# Her bir dosya için dosya boyutu limiti (30 MB)
-# 30 MB = 30 * 1024 * 1024 = 31457280 bytes
 MAX_FILE_SIZE = 30 * 1024 * 1024
 
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
@@ -43,9 +38,6 @@ def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
     
-    # Dosya boyutunu kontrol et
-    # file.seek(0, os.SEEK_END) ile dosyanın boyutunu al
-    # Ardından dosyanın başına dönmek için file.seek(0) kullan
     file.seek(0, os.SEEK_END)
     file_size = file.tell()
     file.seek(0)
