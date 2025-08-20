@@ -4,8 +4,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedFiles = []; // Dosyaların saklanacağı dizi
     let uploadedFilesCount = 0; // Arka planda yüklenen dosyalar
     let totalFilesToUpload = 0;
-    let isSubmitClicked = false; // Gönder butonuna basılıp basılmadığını kontrol eden değişken
-    
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -41,18 +39,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
 
-                // Önizlemeyi hemen göster
-                const previewArea = document.getElementById("audioPreview");
-                previewArea.innerHTML = "";
-                const audio = document.createElement("audio");
-                audio.controls = true;
-                audio.src = audioUrl;
-                const label = document.createElement("p");
-                label.textContent = "Kaydınız:";
-                previewArea.appendChild(label);
-                previewArea.appendChild(audio);
-
-                // Arka planda S3'e yükle
                 const formData = new FormData();
                 formData.append("audio", audioBlob, "recording.wav");
                 formData.append("name", document.querySelector("input[name='name']").value);
@@ -63,8 +49,18 @@ document.addEventListener("DOMContentLoaded", function () {
                 })
                 .then(response => response.json())
                 .then(data => {
-                    if (!data.success) {
-                        // Sadece hata durumunda mesaj göster
+                    if (data.success) {
+                        const previewArea = document.getElementById("audioPreview");
+                        previewArea.innerHTML = "";
+                        const audio = document.createElement("audio");
+                        audio.controls = true;
+                        audio.src = audioUrl;
+                        const label = document.createElement("p");
+                        label.textContent = "Kaydınız:";
+                        previewArea.appendChild(label);
+                        previewArea.appendChild(audio);
+                    } else {
+                        // Mesaj kutusu kullan
                         const msgBox = document.createElement('div');
                         msgBox.textContent = 'Ses kaydınız yüklenemedi.';
                         msgBox.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:white;padding:20px;border:1px solid #ccc;z-index:1000;';
@@ -113,7 +109,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
         totalFilesToUpload = selectedFiles.length;
-        uploadedFilesCount = 0; // Reset counter when new files are selected
 
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
@@ -214,116 +209,48 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // ---------- Arka planda S3 Yükleme (Sıralı) ---------- //
-        uploadFilesSequentially(selectedFiles);
+        // ---------- Arka planda S3 Yükleme ---------- //
+        selectedFiles.forEach(file => uploadFileToS3(file));
     });
 
-    // Dosyaları sırayla yükle
-    async function uploadFilesSequentially(files) {
-        for (let i = 0; i < files.length; i++) {
-            try {
-                await uploadFileToS3(files[i]);
-                console.log(`Dosya ${i + 1}/${files.length} yüklendi: ${files[i].name}`);
-            } catch (error) {
-                console.error(`Dosya yükleme hatası (${files[i].name}):`, error);
-                // Hata olsa bile devam et
-            }
-        }
-    }
-
     function uploadFileToS3(file) {
-        return new Promise((resolve, reject) => {
-            const formData = new FormData();
-            formData.append("file", file);
-            formData.append("name", document.querySelector("input[name='name']").value);
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
 
-            const xhr = new XMLHttpRequest();
-            
-            // Dosya boyutuna göre timeout hesapla
-            const fileSizeMB = file.size / (1024 * 1024);
-            let timeoutDuration;
-            if (fileSizeMB < 5) {
-                timeoutDuration = 30000; // 5MB altı için 30 saniye
-            } else if (fileSizeMB < 20) {
-                timeoutDuration = 60000; // 5-20MB için 1 dakika
-            } else if (fileSizeMB < 50) {
-                timeoutDuration = 120000; // 20-50MB için 2 dakika
-            } else {
-                timeoutDuration = 300000; // 50MB üstü için 5 dakika
-            }
-            
-            xhr.timeout = timeoutDuration;
-            console.log(`${file.name} (${fileSizeMB.toFixed(1)}MB) - Timeout: ${timeoutDuration/1000} saniye`);
-            
-            xhr.upload.addEventListener('progress', function(event) {
-                if (event.lengthComputable) {
-                    // Dosya bazında progress takibi yapılabilir
-                }
-            });
-            
-            xhr.addEventListener('load', function() {
-                if (xhr.status === 200) {
-                    uploadedFilesCount++;
-                    // Sadece gönder butonuna basılmışsa yükleme progress bar'ını göster
-                    if (isSubmitClicked) {
-                        const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-                        uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                        uploadProgressText.textContent = `${uploadedFilesCount}/${totalFilesToUpload} - ${percentComplete.toFixed(0)}%`;
-                    }
-                    
-                    // Tüm dosyalar yüklendi VE gönder butonuna basılmışsa yönlendir
-                    if (uploadedFilesCount === totalFilesToUpload && isSubmitClicked) {
-                        setTimeout(() => { 
-                            window.location.href = mainForm.action; 
-                        }, 500);
-                    }
-                    resolve();
-                } else {
-                    console.error(`HTTP Error ${xhr.status}: ${file.name}`);
-                    reject(new Error(`HTTP Error ${xhr.status}`));
-                }
-            });
-            
-            xhr.addEventListener('error', function() {
-                console.error("Network error:", file.name);
-                reject(new Error("Network error"));
-            });
-            
-            xhr.addEventListener('timeout', function() {
-                console.error(`Timeout error (${timeoutDuration/1000}s):`, file.name);
-                reject(new Error("Timeout error"));
-            });
-            
-            xhr.open('POST', mainForm.action);
-            xhr.send(formData);
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function(event) {
+            // Burada toplam yükleme ilerlemesini ayrı gösterebiliriz
         });
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            if (uploadedFilesCount === totalFilesToUpload) {
+                // Tüm yüklemeler tamamlandı
+                setTimeout(() => { window.location.href = mainForm.action; }, 500);
+            }
+        });
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+        });
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
     }
 
     // ---------- Gönder Butonu ---------- //
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        isSubmitClicked = true; // Gönder butonuna basıldığını işaretle
-        
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
-        }
-
-        // Eğer tüm yüklemeler zaten tamamlandıysa direkt yönlendir
-        if (uploadedFilesCount === totalFilesToUpload && totalFilesToUpload > 0) {
-            window.location.href = mainForm.action;
-        } 
-        // Eğer hiç dosya seçilmemişse de direkt yönlendir
-        else if (totalFilesToUpload === 0) {
-            window.location.href = mainForm.action;
-        }
-        // Yüklemeler devam ediyorsa progress bar'ı göster
-        else {
             uploadProgressBarContainer.style.display = 'block';
-            // Mevcut yükleme durumunu progress bar'a yansıt
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
         }
+        // Eğer yüklemeler zaten tamamlandıysa direkt yönlendir
+        if (uploadedFilesCount === totalFilesToUpload) {
+            window.location.href = mainForm.action;
+        }
+        // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
     });
 });
