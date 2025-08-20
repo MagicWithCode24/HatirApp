@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedFiles = []; // Dosyaların saklanacağı dizi
     let uploadedFilesCount = 0; // Arka planda yüklenen dosyalar
     let totalFilesToUpload = 0;
+    let isSubmitClicked = false; // Gönder butonuna basılıp basılmadığını kontrol eden değişken
+    
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -109,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
         totalFilesToUpload = selectedFiles.length;
+        uploadedFilesCount = 0; // Reset counter when new files are selected
 
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
@@ -224,12 +227,18 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (uploadedFilesCount === totalFilesToUpload) {
-                // Tüm yüklemeler tamamlandı
-                setTimeout(() => { window.location.href = mainForm.action; }, 500);
+            // Sadece gönder butonuna basılmışsa yükleme progress bar'ını göster
+            if (isSubmitClicked) {
+                const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            }
+            
+            // Tüm dosyalar yüklendi VE gönder butonuna basılmışsa yönlendir
+            if (uploadedFilesCount === totalFilesToUpload && isSubmitClicked) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
             }
         });
         xhr.addEventListener('error', function() {
@@ -242,15 +251,28 @@ document.addEventListener("DOMContentLoaded", function () {
     // ---------- Gönder Butonu ---------- //
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
+        isSubmitClicked = true; // Gönder butonuna basıldığını işaretle
+        
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
-            uploadProgressBarContainer.style.display = 'block';
         }
-        // Eğer yüklemeler zaten tamamlandıysa direkt yönlendir
-        if (uploadedFilesCount === totalFilesToUpload) {
+
+        // Eğer tüm yüklemeler zaten tamamlandıysa direkt yönlendir
+        if (uploadedFilesCount === totalFilesToUpload && totalFilesToUpload > 0) {
+            window.location.href = mainForm.action;
+        } 
+        // Eğer hiç dosya seçilmemişse de direkt yönlendir
+        else if (totalFilesToUpload === 0) {
             window.location.href = mainForm.action;
         }
-        // Eğer yüklemeler devam ediyorsa progress bar gösterilecek, yönlendirme uploadFileToS3 fonksiyonunda yapılacak
+        // Yüklemeler devam ediyorsa progress bar'ı göster
+        else {
+            uploadProgressBarContainer.style.display = 'block';
+            // Mevcut yükleme durumunu progress bar'a yansıt
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+        }
     });
 });
