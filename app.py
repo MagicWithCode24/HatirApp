@@ -85,35 +85,46 @@ def ana():
 def son():
     username = request.form.get('name')
     note_content = request.form.get('note')
-    uploaded_files = request.files.getlist('file')
+    uploaded_files = request.files.getlist('file')  # Bu zaten doğru
 
     if not username:
-        flash('Lütfen bir kullanıcı adı girin!', 'error')
-        return redirect(url_for('ana'))
+        return jsonify(success=False, error='Lütfen bir kullanıcı adı girin!'), 400
 
     if not s3_client:
-        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
-        return redirect(url_for('ana'))
+        return jsonify(success=False, error='Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı.'), 500
 
+    success_count = 0
+    error_count = 0
+    messages = []
+
+    # Not yükleme
     if note_content:
         note_s3_url, note_error = upload_note_to_s3(username, note_content)
         if note_error:
-            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
+            messages.append(f'Not yüklenirken bir hata oluştu: {note_error}')
+            error_count += 1
         else:
-            flash('Not başarıyla yüklendi.', 'success')
+            messages.append('Not başarıyla yüklendi.')
+            success_count += 1
 
+    # Dosya yükleme
     for file in uploaded_files:
         if file and file.filename != '':
             file_s3_url, file_error = upload_file_to_s3(file, username)
             if file_error:
-                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
+                messages.append(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}")
+                error_count += 1
             else:
-                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
+                messages.append(f"'{file.filename}' başarıyla yüklendi.")
+                success_count += 1
         else:
-            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
+            messages.append("Boş dosya atlandı.")
 
-    flash('Tüm işlemler tamamlandı!', 'success')
-    return redirect(url_for('son_page'))
+    return jsonify(
+        success=True,
+        message=f'{success_count} dosya başarıyla yüklendi, {error_count} hata oluştu.',
+        details=messages
+    ), 200
 
 @app.route('/son')
 def son_page():
@@ -141,4 +152,5 @@ def upload_audio():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
+
 
