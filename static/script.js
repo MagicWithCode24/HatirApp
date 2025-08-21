@@ -200,6 +200,10 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
 
+        for (let [key, value] of formData.entries()) {
+            console.log(key, value);
+        }
+        
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
             
@@ -225,4 +229,5 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
