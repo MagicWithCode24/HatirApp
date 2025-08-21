@@ -254,17 +254,48 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // uploadFile fonksiyonunu bu şekilde değiştir:
     function uploadFile(file) {
         return new Promise((resolve, reject) => {
-            // MOBILE İÇİN DOSYAYI YENİDEN OLUŞTUR
+            // MOBILE İÇİN DOSYA İSMİNİ DÜZELT
+            const getSafeFileName = (originalName) => {
+                // Türkçe karakterleri ve özel karakterleri düzelt
+                let safeName = originalName
+                    .replace(/ğ/g, 'g').replace(/Ğ/g, 'G')
+                    .replace(/ü/g, 'u').replace(/Ü/g, 'U')
+                    .replace(/ş/g, 's').replace(/Ş/g, 'S')
+                    .replace(/ı/g, 'i').replace(/İ/g, 'I')
+                    .replace(/ö/g, 'o').replace(/Ö/g, 'O')
+                    .replace(/ç/g, 'c').replace(/Ç/g, 'C')
+                    .replace(/[^a-zA-Z0-9._-]/g, '_') // Özel karakterleri _ ile değiştir
+                    .replace(/_+/g, '_') // Ardışık _'leri tekilleştir
+                    .replace(/^_+|_+$/g, ''); // Baştaki ve sondaki _'leri kaldır
+                
+                // Mobile için dosya uzantısını koru
+                const extension = originalName.split('.').pop();
+                if (extension && safeName.indexOf('.') === -1) {
+                    safeName = safeName + '.' + extension;
+                }
+                
+                return safeName || 'file';
+            };
+    
             const processFile = async (file) => {
                 if (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) {
                     try {
                         const fileBuffer = await file.arrayBuffer();
-                        return new File([fileBuffer], file.name, { type: file.type });
+                        const safeFileName = getSafeFileName(file.name);
+                        return new File([fileBuffer], safeFileName, { 
+                            type: file.type,
+                            lastModified: Date.now()
+                        });
                     } catch (error) {
                         console.log("Dosya işleme hatası, orijinal kullanılıyor");
-                        return file;
+                        const safeFileName = getSafeFileName(file.name);
+                        return new File([file], safeFileName, { 
+                            type: file.type,
+                            lastModified: Date.now()
+                        });
                     }
                 }
                 return file;
@@ -274,6 +305,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 const formData = new FormData();
                 formData.append("file", processedFile);
                 formData.append("name", document.querySelector("input[name='name']").value);
+                formData.append("original_filename", file.name); // Orijinal dosya adını da gönder
+    
+                console.log("Yüklenen dosya:", processedFile.name, "Orijinal:", file.name);
     
                 const xhr = new XMLHttpRequest();
                 
@@ -349,4 +383,5 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
