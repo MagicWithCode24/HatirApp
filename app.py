@@ -88,20 +88,14 @@ def son():
     username = request.form.get('name')
     note_content = request.form.get('note')
     
-    # DÜZELTME: Hem eski 'file' hem yeni 'files' parametresini destekle
-    uploaded_files = []
-    
-    # Yeni sistem: 'files' array (mobil düzeltme için)
-    files_array = request.files.getlist('files')
-    if files_array:
-        uploaded_files = files_array
-        print(f"✅ Yeni sistem kullanılıyor: {len(files_array)} dosya alındı")
-    else:
-        # Eski sistem: 'file' tek tek (geriye uyumluluk için)
-        old_files = request.files.getlist('file')
-        uploaded_files = old_files
-        print(f"⚠️ Eski sistem kullanılıyor: {len(old_files)} dosya alındı")
+    # BASITLEŞTIRME: Sadece 'file' parametresini kullan (eski sistem)
+    uploaded_files = request.files.getlist('file')
 
+    print(f"📝 Alınan parametreler:")
+    print(f"   - Username: {username}")
+    print(f"   - Note: {'Var' if note_content else 'Yok'}")
+    print(f"   - Dosya sayısı: {len(uploaded_files)}")
+    
     if not username:
         flash('Lütfen bir kullanıcı adı girin!', 'error')
         return redirect(url_for('ana'))
@@ -116,46 +110,55 @@ def son():
 
     # Not yükleme (sadece içerik varsa)
     if note_content and note_content.strip():
+        print("📄 Not yükleniyor...")
         note_s3_url, note_error = upload_note_to_s3(username, note_content)
         if note_error:
             flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
             upload_error_count += 1
+            print(f"❌ Not yüklenemedi: {note_error}")
         else:
             flash('Not başarıyla yüklendi.', 'success')
             upload_success_count += 1
+            print(f"✅ Not yüklendi")
 
     # Dosya yükleme
-    print(f"Toplam işlenecek dosya sayısı: {len(uploaded_files)}")
-    
-    for index, file in enumerate(uploaded_files):
-        if file and file.filename != '':
-            print(f"İşleniyor ({index+1}/{len(uploaded_files)}): {file.filename}")
-            
-            # Dosya adını benzersiz yap
-            original_filename = secure_filename(file.filename)
-            unique_filename = f"{timestamp}_{index+1}_{original_filename}"
-            
-            file_s3_url, file_error = upload_file_to_s3(file, username, unique_filename)
-            if file_error:
-                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
-                upload_error_count += 1
-                print(f"❌ Hata: {file.filename} - {file_error}")
+    if uploaded_files:
+        print(f"📁 Toplam işlenecek dosya sayısı: {len(uploaded_files)}")
+        
+        for index, file in enumerate(uploaded_files):
+            if file and file.filename != '':
+                print(f"📤 İşleniyor ({index+1}/{len(uploaded_files)}): {file.filename} ({file.content_type})")
+                
+                # Dosya adını benzersiz yap
+                original_filename = secure_filename(file.filename)
+                unique_filename = f"{timestamp}_{index+1}_{original_filename}"
+                
+                file_s3_url, file_error = upload_file_to_s3(file, username, unique_filename)
+                if file_error:
+                    flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
+                    upload_error_count += 1
+                    print(f"❌ Hata: {file.filename} - {file_error}")
+                else:
+                    flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
+                    upload_success_count += 1
+                    print(f"✅ Başarılı: {file.filename}")
             else:
-                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
-                upload_success_count += 1
-                print(f"✅ Başarılı: {file.filename}")
-        else:
-            print(f"⚠️ Boş dosya atlandı: {getattr(file, 'filename', 'Unknown')}")
+                print(f"⚠️ Boş dosya atlandı: {getattr(file, 'filename', 'Unknown')}")
+    else:
+        print("⚠️ Hiç dosya bulunamadı")
 
     # Özet mesaj
     if upload_success_count > 0:
-        flash(f'Toplam {upload_success_count} dosya başarıyla yüklendi!', 'success')
+        flash(f'Toplam {upload_success_count} öğe başarıyla yüklendi!', 'success')
+        print(f"🎉 Toplam başarı: {upload_success_count} öğe")
     
     if upload_error_count > 0:
-        flash(f'{upload_error_count} dosya yüklenirken hata oluştu.', 'error')
+        flash(f'{upload_error_count} öğe yüklenirken hata oluştu.', 'error')
+        print(f"⚠️ Toplam hata: {upload_error_count} öğe")
     
     if upload_success_count == 0 and upload_error_count == 0:
-        flash('Yüklenecek dosya bulunamadı.', 'info')
+        flash('Yüklenecek içerik bulunamadı.', 'info')
+        print("ℹ️ Hiçbir içerik yüklenmedi")
 
     return redirect(url_for('son_page'))
 
