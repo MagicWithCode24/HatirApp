@@ -5,11 +5,6 @@ import boto3
 from botocore.client import Config
 
 app = Flask(__name__)
-
-app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024 * 1024
-
-MAX_FILE_SIZE = 30 * 1024 * 1024
-
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
@@ -37,16 +32,10 @@ else:
 def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
-    
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    file.seek(0)
-    
-    if file_size > MAX_FILE_SIZE:
-        return None, f"Dosya boyutu {MAX_FILE_SIZE / 1024 / 1024:.2f} MB'den büyük olamaz."
 
     filename = secure_filename(file.filename)
     s3_file_path = f"{username}/{filename}"
+
     try:
         s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
         print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
@@ -58,8 +47,10 @@ def upload_file_to_s3(file, username):
 def upload_note_to_s3(username, note_content):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
+
     note_filename = f"{username}_note.txt"
     s3_note_path = f"{username}/{note_filename}"
+
     try:
         s3_client.put_object(
             Bucket=AWS_S3_BUCKET_NAME,
@@ -85,46 +76,35 @@ def ana():
 def son():
     username = request.form.get('name')
     note_content = request.form.get('note')
-    uploaded_files = request.files.getlist('file')  # Bu zaten doğru
+    uploaded_files = request.files.getlist('file')
 
     if not username:
-        return jsonify(success=False, error='Lütfen bir kullanıcı adı girin!'), 400
+        flash('Lütfen bir kullanıcı adı girin!', 'error')
+        return redirect(url_for('ana'))
 
     if not s3_client:
-        return jsonify(success=False, error='Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı.'), 500
+        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
+        return redirect(url_for('ana'))
 
-    success_count = 0
-    error_count = 0
-    messages = []
-
-    # Not yükleme
     if note_content:
         note_s3_url, note_error = upload_note_to_s3(username, note_content)
         if note_error:
-            messages.append(f'Not yüklenirken bir hata oluştu: {note_error}')
-            error_count += 1
+            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
         else:
-            messages.append('Not başarıyla yüklendi.')
-            success_count += 1
+            flash('Not başarıyla yüklendi.', 'success')
 
-    # Dosya yükleme
     for file in uploaded_files:
         if file and file.filename != '':
             file_s3_url, file_error = upload_file_to_s3(file, username)
             if file_error:
-                messages.append(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}")
-                error_count += 1
+                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
             else:
-                messages.append(f"'{file.filename}' başarıyla yüklendi.")
-                success_count += 1
+                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
         else:
-            messages.append("Boş dosya atlandı.")
+            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
 
-    return jsonify(
-        success=True,
-        message=f'{success_count} dosya başarıyla yüklendi, {error_count} hata oluştu.',
-        details=messages
-    ), 200
+    flash('Tüm işlemler tamamlandı!', 'success')
+    return redirect(url_for('son'))
 
 @app.route('/son')
 def son_page():
@@ -134,12 +114,12 @@ def son_page():
 def upload_audio():
     if 'audio' not in request.files:
         return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
+
     audio_file = request.files['audio']
     username = request.form.get('name')
-    if not username:
-        return jsonify(success=False, error="Kullanıcı adı eksik."), 400
     filename = f"{username}_audio.wav"
     s3_audio_path = f"{username}/{filename}"
+
     try:
         s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
         audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
@@ -152,5 +132,3 @@ def upload_audio():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
-
-
