@@ -7,10 +7,17 @@ from botocore.client import Config
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
+app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024 * 1024
+
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
 AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
 AWS_S3_REGION = os.environ.get('AWS_S3_REGION')
+
+@app.errorhandler(413)
+def too_large(e):
+    flash('Yüklemeye çalıştığınız dosya boyutu çok büyük. Maksimum 3GB boyutunda dosya yükleyebilirsiniz.', 'error')
+    return redirect(url_for('ana'))
 
 s3_client = None
 if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3_REGION:
@@ -132,3 +139,4 @@ def upload_audio():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
+
