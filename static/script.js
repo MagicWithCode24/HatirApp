@@ -240,8 +240,8 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.textContent = 'Yükle';
             submitBtn.disabled = false;
             uploadProgressBarContainer.style.display = 'none';
-         }
+        }
     }
-});
+
 
 
