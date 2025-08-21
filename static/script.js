@@ -177,61 +177,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-    
+        
         if (selectedFiles.length === 0) {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
-    
+
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-    
+
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
-    
+
         selectedFiles.forEach(file => uploadFile(file));
     });
-    
+
     function uploadFile(file) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
-    
+
         const xhr = new XMLHttpRequest();
-    
         xhr.upload.addEventListener('progress', function(event) {
-            if (event.lengthComputable) {
-                // Bu dosyanın yüklenme yüzdesi
-                const filePercent = (event.loaded / event.total) * 100;
-                // Toplam yükleme yüzdesi
-                const overallPercent = ((uploadedFilesCount + filePercent / 100) / totalFilesToUpload) * 100;
-                uploadProgressBar.style.width = overallPercent.toFixed(0) + '%';
-                uploadProgressText.textContent = overallPercent.toFixed(0) + '%';
-            }
+            
         });
-    
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
-            // Son dosya tamamlandıysa
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
             if (uploadedFilesCount === totalFilesToUpload) {
-                uploadProgressBar.style.width = '100%';
-                uploadProgressText.textContent = '100%';
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
                 }, 500);
             }
         });
-    
         xhr.addEventListener('error', function() {
             console.error("Dosya yükleme hatası:", file.name);
             alert(`Yüklenemeyen dosya: ${file.name}`);
         });
-    
+
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     }
-
-
+});
