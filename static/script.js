@@ -182,53 +182,59 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
-
+    
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-
-        uploadedFilesCount = 0;
-        totalFilesToUpload = selectedFiles.length;
-
-        selectedFiles.forEach(file => uploadFile(file));
+    
+        // Tek istekle tüm dosyaları gönder
+        uploadAllFiles();
     });
 
-    function uploadFile(file) {
+    function uploadAllFiles() {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
-
+        const name = document.querySelector("input[name='name']").value;
         const noteContent = document.querySelector("textarea[name='note']").value;
-        if (noteContent.trim() !== "") {
-            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("file", noteFile);  
-        }
-
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function(event) {
-            
+        
+        // Name alanını ekle
+        formData.append("name", name);
+        
+        // Tüm dosyaları ekle
+        selectedFiles.forEach(file => {
+            formData.append("file", file);
         });
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
-            if (uploadedFilesCount === totalFilesToUpload) {
-                setTimeout(() => { 
-                    window.location.href = mainForm.action; 
-                }, 500);
+        
+        // Not içeriğini ekle (text olarak)
+        if (noteContent.trim() !== "") {
+            formData.append("note", noteContent);
+        }
+    
+        const xhr = new XMLHttpRequest();
+        
+        xhr.upload.addEventListener('progress', function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             }
         });
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
+        
+        xhr.addEventListener('load', function() {
+            setTimeout(() => { 
+                window.location.href = mainForm.action; 
+            }, 500);
         });
-
+        
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası");
+            alert("Dosyalar yüklenirken bir hata oluştu.");
+        });
+    
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     }
 });
+
 
