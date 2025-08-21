@@ -39,10 +39,29 @@ def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
 
-    filename = secure_filename(file.filename)
+    # Orijinal dosya adını al (frontend'den gelen)
+    original_filename = request.form.get('original_filename', file.filename)
+    filename = secure_filename(original_filename)
+    
+    # Eğer secure_filename çok fazla karakter sildiyse, basit bir isim oluştur
+    if not filename or len(filename) < 3:
+        import uuid
+        extension = original_filename.split('.')[-1] if '.' in original_filename else 'bin'
+        filename = f"{uuid.uuid4().hex[:8]}.{extension}"
+    
     s3_file_path = f"{username}/{filename}"
 
     try:
+        # Dosya boyutunu kontrol et
+        file.seek(0, 2)  # Dosyanın sonuna git
+        file_size = file.tell()
+        file.seek(0)  # Başa dön
+        
+        print(f"Yüklenen dosya: {filename}, Boyut: {file_size} bytes, Tür: {file.content_type}")
+        
+        if file_size == 0:
+            return None, f"Dosya boş: {filename}"
+            
         s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
         print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
         return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
@@ -138,5 +157,6 @@ def upload_audio():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
+
 
 
