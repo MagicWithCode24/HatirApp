@@ -175,6 +175,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    let nameSent = false;
+    
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -199,7 +201,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const formData = new FormData();
         const uniqueFileName = Date.now() + "_" + file.name;
         formData.append("file", new File([file], uniqueFileName, { type: file.type }));
-        formData.append("name", document.querySelector("input[name='name']").value);
+        
+        if (!nameSent) {
+            formData.append("name", document.querySelector("input[name='name']").value);
+            nameSent = true;
+        }
         
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
@@ -217,15 +223,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, 500);
             }
         });
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
-        });
-
+        
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     }
 });
+
 
 
 
