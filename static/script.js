@@ -48,9 +48,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
 
-                // Ses dosyasını benzersiz isimle ekle
-                const timestamp = Date.now();
-                selectedFiles.push(new File([audioBlob], `recording_${timestamp}.wav`, { type: 'audio/wav' }));
+                selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
             });
 
             startBtn.disabled = true;
@@ -75,8 +73,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-        // DÜZELTME: Dosyaları doğru şekilde birleştir
-        selectedFiles = selectedFiles.filter(file => file.name.startsWith('recording_') || file.name === 'note.txt');
         selectedFiles = [...selectedFiles, ...newFiles];
 
         previewContainer.innerHTML = '';
@@ -179,14 +175,11 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    mainForm.addEventListener('submit', async function(e) {
+    mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        // Not içeriğini kontrol et
-        const noteContent = document.querySelector("textarea[name='note']").value;
-        
-        if (selectedFiles.length === 0 && noteContent.trim() === "") {
-            alert("Lütfen yüklenecek bir dosya seçin, ses kaydı yapın veya not yazın.");
+        if (selectedFiles.length === 0) {
+            alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
 
@@ -199,90 +192,43 @@ document.addEventListener("DOMContentLoaded", function () {
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
 
-        console.log('Yüklenecek dosyalar:', selectedFiles.map(f => f.name));
-
-        // Form verilerini hazırla ve gönder
-        try {
-            await uploadAllFiles();
-        } catch (error) {
-            console.error('Upload hatası:', error);
-            alert('Dosya yükleme hatası oluştu: ' + error.message);
-            if (submitBtn) {
-                submitBtn.textContent = 'Gönder';
-                submitBtn.disabled = false;
-                uploadProgressBarContainer.style.display = 'none';
-            }
-        }
+        selectedFiles.forEach(file => uploadFile(file));
     });
 
-    // DÜZELTME: Form verilerini doğru şekilde gönder
-    async function uploadAllFiles() {
+    function uploadFile(file) {
         const formData = new FormData();
-        const userName = document.querySelector("input[name='name']").value;
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
+
         const noteContent = document.querySelector("textarea[name='note']").value;
-        
-        // Kullanıcı adını ekle
-        formData.append("name", userName);
-        
-        // Not içeriğini ekle (eğer varsa)
         if (noteContent.trim() !== "") {
-            formData.append("note", noteContent);
+            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
+            formData.append("file", noteFile);  
         }
-        
-        // Tüm dosyaları FormData'ya ekle - BACKEND'DEKİ 'file' parametresine uygun olarak
-        selectedFiles.forEach((file, index) => {
-            formData.append("file", file);  // Backend 'file' parametresini bekliyor
-        });
 
-        console.log('FormData içeriği:');
-        for (let pair of formData.entries()) {
-            if (pair[1] instanceof File) {
-                console.log(pair[0] + ': ' + pair[1].name + ' (' + pair[1].type + ')');
-            } else {
-                console.log(pair[0] + ': ' + pair[1]);
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function(event) {
+            
+        });
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
+            if (uploadedFilesCount === totalFilesToUpload) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
             }
-        }
-
-        return new Promise((resolve, reject) => {
-            const xhr = new XMLHttpRequest();
-            
-            xhr.upload.addEventListener('progress', function(event) {
-                if (event.lengthComputable) {
-                    const percentComplete = (event.loaded / event.total) * 100;
-                    uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                    uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-                }
-            });
-            
-            xhr.addEventListener('load', function() {
-                console.log('XHR Response status:', xhr.status);
-                console.log('XHR Response text:', xhr.responseText);
-                
-                if (xhr.status >= 200 && xhr.status < 400) {
-                    uploadProgressBar.style.width = '100%';
-                    uploadProgressText.textContent = '100%';
-                    setTimeout(() => { 
-                        window.location.href = '/son';  // Backend'deki redirect URL'e uygun
-                    }, 500);
-                    resolve();
-                } else {
-                    console.error('Server error:', xhr.status, xhr.responseText);
-                    reject(new Error('Upload başarısız: ' + xhr.status + ' - ' + xhr.responseText));
-                }
-            });
-            
-            xhr.addEventListener('error', function() {
-                console.error('Network error during upload');
-                reject(new Error('Network hatası'));
-            });
-
-            xhr.addEventListener('timeout', function() {
-                console.error('Upload timeout');
-                reject(new Error('Upload zaman aşımı'));
-            });
-
-            xhr.open('POST', mainForm.action);
-            xhr.timeout = 60000;  // 60 saniye timeout
-            xhr.send(formData);
         });
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
+        });
+
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
     }
+});
+
