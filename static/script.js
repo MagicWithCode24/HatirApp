@@ -183,47 +183,25 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        if (submitBtn) {
-            submitBtn.textContent = 'Yükleniyor...';
-            submitBtn.disabled = true;
-            uploadProgressBarContainer.style.display = 'block';
-        }
-
-        uploadedFilesCount = 0;
-        totalFilesToUpload = selectedFiles.length;
-
-        selectedFiles.forEach(file => uploadFile(file));
-    });
-
-    function uploadFile(file) {
         const formData = new FormData();
-        formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
 
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function(event) {
-            
-        });
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
-            if (uploadedFilesCount === totalFilesToUpload) {
-                setTimeout(() => { 
-                    window.location.href = mainForm.action; 
-                }, 500);
-            }
-        });
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
+        selectedFiles.forEach(file => {
+            const uniqueFileName = Date.now() + "_" + file.name;
+            formData.append("file", new File([file], uniqueFileName, { type: file.type }));
         });
 
-        xhr.open('POST', mainForm.action);
-        xhr.send(formData);
-    }
-});
-
-
+        fetch(mainForm.action, {
+            method: "POST",
+            body: formData
+        })
+        .then(response => response.text())
+        .then(data => {
+            console.log("Sunucudan gelen cevap:", data);
+            window.location.href = mainForm.action;
+        })
+        .catch(err => {
+            console.error("Yükleme hatası:", err);
+            alert("Dosyalar yüklenirken bir hata oluştu.");
+        });
+    });
