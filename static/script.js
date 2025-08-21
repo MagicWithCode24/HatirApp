@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("name", document.querySelector("input[name='name']").value);
 
         for (let [key, value] of formData.entries()) {
-            console.log(key, value);
+            alert(key + ": " + (value.name || value));
         }
         
         const xhr = new XMLHttpRequest();
@@ -229,5 +229,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
