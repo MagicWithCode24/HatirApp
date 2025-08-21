@@ -2,8 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
-    let uploadedFilesCount = 0;
-    let totalFilesToUpload = 0;
+    let recordedAudio = null;
+    
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -48,7 +48,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
 
-                selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
+                // Ses kaydını recordedAudio değişkeninde sakla
+                recordedAudio = new File([audioBlob], "recording.wav", { type: 'audio/wav' });
             });
 
             startBtn.disabled = true;
@@ -178,57 +179,97 @@ document.addEventListener("DOMContentLoaded", function () {
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        if (selectedFiles.length === 0) {
-            alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
+        const username = document.querySelector("input[name='name']").value;
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        
+        if (!username.trim()) {
+            alert("Lütfen ad soyad alanını doldurun.");
+            return;
+        }
+        
+        // Yüklenecek dosyaları topla
+        let filesToUpload = [...selectedFiles];
+        
+        // Ses kaydı varsa ekle
+        if (recordedAudio) {
+            filesToUpload.push(recordedAudio);
+        }
+        
+        // Not varsa dosya olarak ekle
+        if (noteContent.trim() !== "") {
+            const noteFile = new File([noteContent], `${username}_note.txt`, { type: "text/plain" });
+            filesToUpload.push(noteFile);
+        }
+        
+        if (filesToUpload.length === 0) {
+            alert("Lütfen yüklenecek bir dosya seçin, ses kaydı yapın veya not ekleyin.");
             return;
         }
 
+        // UI'yi güncelle
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
+            uploadProgressBar.style.width = '0%';
+            uploadProgressText.textContent = '0%';
         }
 
-        uploadedFilesCount = 0;
-        totalFilesToUpload = selectedFiles.length;
-
-        selectedFiles.forEach(file => uploadFile(file));
+        // Tüm dosyaları tek seferde yükle
+        uploadAllFiles(filesToUpload, username);
     });
 
-    function uploadFile(file) {
+    function uploadAllFiles(files, username) {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
-
-        const noteContent = document.querySelector("textarea[name='note']").value;
-        if (noteContent.trim() !== "") {
-            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("file", noteFile);  
-        }
+        
+        // Kullanıcı adını ekle
+        formData.append("name", username);
+        
+        // Tüm dosyaları FormData'ya ekle
+        files.forEach(file => {
+            formData.append("files", file);
+        });
 
         const xhr = new XMLHttpRequest();
+        
+        // Yükleme ilerlemesi
         xhr.upload.addEventListener('progress', function(event) {
-            
-        });
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
-            if (uploadedFilesCount === totalFilesToUpload) {
-                setTimeout(() => { 
-                    window.location.href = mainForm.action; 
-                }, 500);
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             }
         });
+        
+        // Yükleme tamamlandığında
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200) {
+                uploadProgressBar.style.width = '100%';
+                uploadProgressText.textContent = '100%';
+                setTimeout(() => { 
+                    window.location.href = '/son'; 
+                }, 500);
+            } else {
+                alert('Yükleme sırasında bir hata oluştu.');
+                resetForm();
+            }
+        });
+        
+        // Hata durumunda
         xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
+            alert('Yükleme sırasında bir hata oluştu.');
+            resetForm();
         });
 
-        xhr.open('POST', mainForm.action);
+        xhr.open('POST', '/upload-all');
         xhr.send(formData);
     }
+    
+    function resetForm() {
+        if (submitBtn) {
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+            uploadProgressBarContainer.style.display = 'none';
+        }
+    }
 });
-
