@@ -2,6 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
+    let uploadedFilesCount = 0;
+    let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -14,6 +16,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
+
+    // Mobile cihaz kontrolü
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    console.log("Cihaz:", isMobile ? "Mobile" : "Desktop");
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -71,8 +77,47 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-        selectedFiles = [...selectedFiles, ...newFiles];
+        console.log("Seçilen dosya sayısı:", newFiles.length);
+        
+        // MOBILE İÇİN ÖZEL İŞLEM: Dosyaları yeniden oluştur
+        if (isMobile && newFiles.length > 0) {
+            processMobileFiles(newFiles).then(processedFiles => {
+                selectedFiles = [...selectedFiles, ...processedFiles];
+                updatePreview();
+            });
+        } else {
+            selectedFiles = [...selectedFiles, ...newFiles];
+            updatePreview();
+        }
+    });
 
+    // Mobile dosyaları işleme fonksiyonu
+    async function processMobileFiles(files) {
+        const processedFiles = [];
+        
+        for (const file of files) {
+            try {
+                // Dosyayı ArrayBuffer olarak oku
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // Yeniden File objesi oluştur
+                const processedFile = new File([arrayBuffer], file.name, {
+                    type: file.type,
+                    lastModified: file.lastModified
+                });
+                
+                processedFiles.push(processedFile);
+                console.log("Mobile dosya işlendi:", file.name);
+            } catch (error) {
+                console.error("Dosya işleme hatası:", file.name, error);
+                processedFiles.push(file); // Fallback: orijinal dosya
+            }
+        }
+        
+        return processedFiles;
+    }
+
+    function updatePreview() {
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
@@ -171,7 +216,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
-    });
+    }
 
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -187,30 +232,73 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBarContainer.style.display = 'block';
         }
 
-        // TEK BİR FORMDATA İLE TÜM DOSYALARI GÖNDER
-        uploadAllFilesTogether();
+        uploadedFilesCount = 0;
+        totalFilesToUpload = selectedFiles.length;
+
+        // Not dosyasını ekle
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        if (noteContent.trim() !== "") {
+            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
+            selectedFiles.push(noteFile);
+            totalFilesToUpload = selectedFiles.length;
+        }
+
+        // MOBILE İÇİN ÖZEL: Tüm dosyaları tek seferde gönder
+        if (isMobile) {
+            uploadAllFilesTogether();
+        } else {
+            // Desktop için orijinal yöntem
+            selectedFiles.forEach(file => uploadFile(file));
+        }
     });
+
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
+        formData.append("is_mobile", isMobile ? "yes" : "no");
+
+        const xhr = new XMLHttpRequest();
+        
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
+            if (uploadedFilesCount === totalFilesToUpload) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
+            }
+        });
+        
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
+        });
+
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
+    }
 
     function uploadAllFilesTogether() {
         const formData = new FormData();
         const userName = document.querySelector("input[name='name']").value;
         
-        // Kullanıcı adını ekle
         formData.append("name", userName);
+        formData.append("is_mobile", "yes");
         
-        // TÜM dosyaları ekle (fotoğraflar, ses, her şey)
+        // Tüm dosyaları ekle
         selectedFiles.forEach((file, index) => {
-            formData.append(`files`, file); // Aynı key ile tüm dosyalar
+            formData.append(`file_${index}`, file);
+            formData.append(`file_name_${index}`, file.name);
         });
 
-        // Not içeriğini ekle (eğer varsa)
         const noteContent = document.querySelector("textarea[name='note']").value;
         if (noteContent.trim() !== "") {
             formData.append("note", noteContent);
         }
-
-        console.log("Toplam dosya sayısı:", selectedFiles.length);
-        console.log("Toplam boyut:", selectedFiles.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024, "MB");
 
         const xhr = new XMLHttpRequest();
         
@@ -223,7 +311,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         
         xhr.addEventListener('load', function() {
-            console.log("Tüm dosyalar başarıyla yüklendi!");
             setTimeout(() => { 
                 window.location.href = mainForm.action; 
             }, 500);
@@ -231,7 +318,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         xhr.addEventListener('error', function() {
             console.error("Dosya yükleme hatası");
-            alert("Dosya yüklenirken hata oluştu. Dosya boyutları çok büyük olabilir.");
+            alert("Dosya yüklenirken hata oluştu");
             if (submitBtn) {
                 submitBtn.textContent = 'Gönder';
                 submitBtn.disabled = false;
