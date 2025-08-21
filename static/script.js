@@ -183,6 +183,9 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        const fileNames = selectedFiles.map(f => f.name).join("\n");
+        alert("Gönderilecek dosyalar:\n" + fileNames);
+
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
@@ -225,3 +228,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
