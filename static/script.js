@@ -72,12 +72,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadText = document.getElementById('uploadText');
 
     fileInput.addEventListener('change', () => {
-    // Her yeni dosya seçiminde selectedFiles'ı sıfırla.
-        selectedFiles = Array.from(fileInput.files);
-    
+        const newFiles = Array.from(fileInput.files);
+        selectedFiles = [...selectedFiles, ...newFiles];
+
         previewContainer.innerHTML = '';
-        
-        // Yükleme metni ve ilerleme çubuğu görünürlüğünü güncelle.
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
@@ -89,77 +87,68 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-    
+
+        const maxNormalPreview = 2;
+        const maxOverlayPreview = 3;
         let allPreviews = [];
         let loadedCount = 0;
-    
+
         const updateFilePreviewProgress = () => {
             loadedCount++;
             const percentComplete = (loadedCount / selectedFiles.length) * 100;
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
             if (loadedCount === selectedFiles.length) {
-                // Son yükleme tamamlandığında ilerleme çubuğunu gizle
                 setTimeout(() => {
                     filePreviewProgressBarContainer.style.display = 'none';
                 }, 500);
             }
         };
-    
+
         selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const img = document.createElement("img");
-                    img.src = e.target.result;
-                    previewContainer.appendChild(img);
-                    updateFilePreviewProgress();
-                };
-                reader.onerror = function(err) {
-                    console.error("Resim önizlemesi yüklenirken hata:", err);
-                    updateFilePreviewProgress(); // Hata durumunda da ilerlemeyi güncelle
-                };
-                reader.readAsDataURL(file);
+                allPreviews.push(new Promise(resolve => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const img = document.createElement("img");
+                        img.src = e.target.result;
+                        updateFilePreviewProgress();
+                        resolve(img);
+                    };
+                    reader.readAsDataURL(file);
+                }));
             } else if (file.type.startsWith("video/")) {
-                // ... (video önizleme mantığı, aynı şekilde onerror ekleyebilirsiniz)
-                // Bu kısım karmaşık olduğu için direkt "video önizlemesi yüklenemedi" metni göstermek daha iyi olabilir.
-                const video = document.createElement('video');
-                video.src = URL.createObjectURL(file);
-                video.preload = 'metadata';
-                video.onloadeddata = () => {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                    const img = document.createElement('img');
-                    img.src = canvas.toDataURL('image/jpeg');
-                    previewContainer.appendChild(img);
-                    URL.revokeObjectURL(video.src);
-                    updateFilePreviewProgress();
-                };
-                video.onerror = () => {
-                    console.error("Video önizlemesi yüklenirken hata:", file.name);
-                    const errorDiv = document.createElement('div');
-                    errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
-                    // CSS stilleri
-                    previewContainer.appendChild(errorDiv);
-                    updateFilePreviewProgress();
-                };
+                allPreviews.push(new Promise(resolve => {
+                    const video = document.createElement('video');
+                    video.preload = 'metadata';
+                    video.src = URL.createObjectURL(file);
+                    video.onloadeddata = function () { video.currentTime = 0; };
+                    video.onseeked = function () {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const img = document.createElement('img');
+                        img.src = canvas.toDataURL('image/jpeg');
+                        URL.revokeObjectURL(video.src);
+                        updateFilePreviewProgress();
+                        resolve(img);
+                    };
+                    video.onerror = function () {
+                        console.error("Video yüklenemedi:", file.name);
+                        const errorDiv = document.createElement('div');
+                        errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
+                        errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
+                        updateFilePreviewProgress();
+                        resolve(errorDiv);
+                    };
+                }));
             } else {
-                // Görsel veya video olmayan dosyalar için
-                const textDiv = document.createElement('div');
-                textDiv.textContent = `${file.name} (Desteklenmiyor)`;
-                // CSS stilleri
-                previewContainer.appendChild(textDiv);
                 updateFilePreviewProgress();
+                allPreviews.push(Promise.resolve(null));
             }
         });
-    
-        // Promise.all yerine, her bir dosyayı ayrı ayrı işle.
-        // Bu, hata durumunda tüm sürecin durmasını engeller.
-        // Ancak, şu anki mantıkta zaten her bir dosyayı ayrı ayrı işlemek daha doğru.
-    });
 
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
@@ -188,56 +177,51 @@ document.addEventListener("DOMContentLoaded", function () {
 
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-    
+        
         if (selectedFiles.length === 0) {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
-    
+
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-    
-        // Tek bir FormData nesnesi oluştur.
-        const formData = new FormData();
-        formData.append("name", document.querySelector("input[name='name']").value);
-        
-        // Tüm dosyaları aynı "file" anahtarı altında FormData'ya ekle.
-        selectedFiles.forEach(file => {
-            formData.append("file", file);
-        });
-    
-        const xhr = new XMLHttpRequest();
-    
-        xhr.upload.addEventListener('progress', function(event) {
-            if (event.lengthComputable) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            }
-        });
-    
-        xhr.addEventListener('load', function() {
-            // Yükleme tamamlandığında sayfayı yönlendir.
-            // Hata kontrolü eklemek istersen, burada xhr.status'ü kontrol edebilirsin.
-            setTimeout(() => { 
-                window.location.href = mainForm.action; 
-            }, 500);
-        });
-    
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası.");
-            alert("Dosya yükleme sırasında bir hata oluştu.");
-            // Hata durumunda butonu tekrar aktif hale getir.
-            if (submitBtn) {
-                submitBtn.textContent = 'Gönder';
-                submitBtn.disabled = false;
-            }
-        });
-    
-        xhr.open('POST', mainForm.action);
-        xhr.send(formData);
+
+        uploadedFilesCount = 0;
+        totalFilesToUpload = selectedFiles.length;
+
+        selectedFiles.forEach(file => uploadFile(file));
     });
 
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
+
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function(event) {
+            
+        });
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
+            if (uploadedFilesCount === totalFilesToUpload) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
+            }
+        });
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
+        });
+
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
+    }
+});
