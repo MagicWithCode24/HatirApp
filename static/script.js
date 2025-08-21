@@ -175,60 +175,79 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // ...
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+    
         if (selectedFiles.length === 0) {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
-
+    
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-
-        uploadedFilesCount = 0;
-        totalFilesToUpload = selectedFiles.length;
-
-        selectedFiles.forEach(file => uploadFile(file));
-    });
-
-    function uploadFile(file) {
+    
+        // --- BURASI YENİ KOD BLOĞU ---
+        // Tek bir FormData nesnesi oluştur
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
-
+    
+        // Kullanıcı adını ekle
+        const username = document.querySelector("input[name='name']").value;
+        formData.append("name", username);
+    
+        // Tüm seçilen dosyaları (fotoğraf, video, ses) FormData'ya ekle
+        selectedFiles.forEach(file => {
+            formData.append("file", file);
+        });
+    
+        // Notu bir dosya (note.txt) olarak FormData'ya ekle
         const noteContent = document.querySelector("textarea[name='note']").value;
         if (noteContent.trim() !== "") {
             const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("file", noteFile);  
+            formData.append("file", noteFile);
         }
-
+        
+        // Yükleme işlemini tek bir XMLHttpRequest ile başlat
         const xhr = new XMLHttpRequest();
+        
+        // Yükleme ilerlemesini takip et
         xhr.upload.addEventListener('progress', function(event) {
-            
-        });
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
-            if (uploadedFilesCount === totalFilesToUpload) {
-                setTimeout(() => { 
-                    window.location.href = mainForm.action; 
-                }, 500);
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             }
         });
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
+    
+        // Yükleme tamamlandığında
+        xhr.addEventListener('load', function() {
+            if (xhr.status === 200) {
+                setTimeout(() => {
+                    window.location.href = mainForm.action;
+                }, 500);
+            } else {
+                alert("Yüklemede bir hata oluştu. Lütfen tekrar deneyin.");
+                submitBtn.textContent = 'Gönder';
+                submitBtn.disabled = false;
+                uploadProgressBarContainer.style.display = 'none';
+            }
         });
-
+    
+        // Hata durumunda
+        xhr.addEventListener('error', function() {
+            console.error("Yükleme sırasında bir ağ hatası oluştu.");
+            alert("Yükleme sırasında bir ağ hatası oluştu. Lütfen bağlantınızı kontrol edin ve tekrar deneyin.");
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
+            uploadProgressBarContainer.style.display = 'none';
+        });
+    
+        // İsteği gönder
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
-    }
-});
+    });
+
 
