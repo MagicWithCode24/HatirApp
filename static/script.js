@@ -178,6 +178,21 @@ document.addEventListener("DOMContentLoaded", function () {
         const formData = new FormData();
         const name = document.querySelector("input[name='name']").value;
         const noteContent = document.querySelector("textarea[name='note']").value;
+
+        let totalSize = 0;
+        selectedFiles.forEach(file => {
+            totalSize += file.size;
+        });
+
+        if (totalSize > 3221225472) {
+            alert('Toplam dosya boyutu 3GB sınırını aşıyor. Lütfen daha küçük dosyalar seçin.');
+            if (submitBtn) {
+                submitBtn.textContent = 'Gönder';
+                submitBtn.disabled = false;
+            }
+            uploadProgressBarContainer.style.display = 'none';
+            return;
+        }
         
         // Name alanını ekle
         formData.append("name", name);
@@ -245,3 +260,4 @@ document.addEventListener("DOMContentLoaded", function () {
         uploadAllFiles();
     });
 });
+
