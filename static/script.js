@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedFiles = [];
     let uploadedFilesCount = 0;
     let totalFilesToUpload = 0;
+    let bucketCreated = false; // Bucket'ın oluşturulup oluşturulmadığını takip et
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -191,52 +192,80 @@ document.addEventListener("DOMContentLoaded", function () {
 
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
+        bucketCreated = false; // Her gönderimde bucket durumunu sıfırla
 
-        // TÜM DOSYALARI TEK BİR FORMDATA İLE GÖNDER
-        uploadAllFilesTogether();
-    });
-
-    function uploadAllFilesTogether() {
-        const formData = new FormData();
-        const userName = document.querySelector("input[name='name']").value;
-        
-        // Kullanıcı adını ekle
-        formData.append("name", userName);
-        
-        // Tüm dosyaları ekle
-        selectedFiles.forEach((file, index) => {
-            formData.append(`file${index}`, file);
-        });
-
-        // Not içeriğini ekle (eğer varsa)
-        const noteContent = document.querySelector("textarea[name='note']").value;
-        if (noteContent.trim() !== "") {
-            formData.append("note", noteContent);
-        }
-
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', function(event) {
-            if (event.lengthComputable) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            }
-        });
-        
-        xhr.addEventListener('load', function() {
-            setTimeout(() => { 
-                window.location.href = mainForm.action; 
-            }, 500);
-        });
-        
-        xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası");
-            alert("Dosya yüklenirken hata oluştu");
+        // Önce bucket'ı oluştur, sonra dosyaları yükle
+        createBucketFirst().then(() => {
+            selectedFiles.forEach(file => uploadFile(file));
+        }).catch(error => {
+            console.error("Bucket oluşturma hatası:", error);
+            alert("Bucket oluşturulurken hata oluştu");
             if (submitBtn) {
                 submitBtn.textContent = 'Gönder';
                 submitBtn.disabled = false;
             }
+        });
+    });
+
+    function createBucketFirst() {
+        return new Promise((resolve, reject) => {
+            if (bucketCreated) {
+                resolve();
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("action", "create_bucket");
+            formData.append("name", document.querySelector("input[name='name']").value);
+
+            const xhr = new XMLHttpRequest();
+            xhr.addEventListener('load', function() {
+                bucketCreated = true;
+                resolve();
+            });
+            
+            xhr.addEventListener('error', function() {
+                reject(new Error("Bucket oluşturulamadı"));
+            });
+
+            xhr.open('POST', mainForm.action);
+            xhr.send(formData);
+        });
+    }
+
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
+        formData.append("action", "upload_file"); // Bucket oluşturma değil, dosya yükleme
+
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        if (noteContent.trim() !== "") {
+            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
+            formData.append("file", noteFile);  
+        }
+
+        const xhr = new XMLHttpRequest();
+        xhr.upload.addEventListener('progress', function(event) {
+            // Progress bar güncelleme
+        });
+        
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
+            if (uploadedFilesCount === totalFilesToUpload) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
+            }
+        });
+        
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
         });
 
         xhr.open('POST', mainForm.action);
