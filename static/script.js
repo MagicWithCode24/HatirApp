@@ -182,46 +182,71 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
-
+    
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-
-        uploadedFilesCount = 0;
-        totalFilesToUpload = selectedFiles.length;
-
-        selectedFiles.forEach(file => uploadFile(file));
+    
+        // TEK SEFERDE TÜM DOSYALARI YÜKLE
+        uploadAllFiles(selectedFiles);
     });
-
-    function uploadFile(file) {
+    
+    // YENİ FONKSİYON: Tüm dosyaları tek request'te yükle
+    function uploadAllFiles(files) {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
-
-        const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function(event) {
-            
+        
+        // Tüm dosyaları aynı FormData'ya ekle
+        files.forEach((file, index) => {
+            formData.append(`files[]`, file); // files[] array olarak gönder
         });
+        
+        // Diğer form verilerini ekle
+        formData.append("name", document.querySelector("input[name='name']").value);
+        // Diğer form field'ları varsa buraya ekleyin
+    
+        const xhr = new XMLHttpRequest();
+        
+        // Upload progress tracking
+        xhr.upload.addEventListener('progress', function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            }
+        });
+        
         xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
-            if (uploadedFilesCount === totalFilesToUpload) {
+            if (xhr.status === 200) {
+                uploadProgressBar.style.width = '100%';
+                uploadProgressText.textContent = '100%';
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
                 }, 500);
+            } else {
+                console.error("Yükleme hatası:", xhr.responseText);
+                alert("Dosyalar yüklenirken bir hata oluştu.");
+                resetUploadUI();
             }
         });
+        
         xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
+            console.error("Yükleme hatası oluştu");
+            alert("Dosyalar yüklenirken bir hata oluştu.");
+            resetUploadUI();
         });
-
+    
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     }
-});
+    
+    // UI'yi sıfırlamak için yardımcı fonksiyon
+    function resetUploadUI() {
+        if (submitBtn) {
+            submitBtn.textContent = 'Yükle';
+            submitBtn.disabled = false;
+            uploadProgressBarContainer.style.display = 'none';
+        }
+    }
+
