@@ -2,22 +2,19 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
-
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
-    const submitBtn = document.getElementById("submitBtn");
     const mainForm = document.getElementById("mainForm");
 
-    const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // --- Mikrofon kaydı ---
+    // Mikrofon paneli
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -31,9 +28,7 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder.start();
             audioChunks = [];
 
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
+            mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
 
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
@@ -61,14 +56,13 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     stopBtn.addEventListener("click", () => {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
+        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
 
-    // --- Dosya seçimi ve önizleme ---
+    // Dosya seçimi ve önizleme
+    const fileInput = document.getElementById('real-file');
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
@@ -97,9 +91,7 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
             if (loadedCount === selectedFiles.length) {
-                setTimeout(() => {
-                    filePreviewProgressBarContainer.style.display = 'none';
-                }, 500);
+                setTimeout(() => { filePreviewProgressBarContainer.style.display = 'none'; }, 500);
             }
         };
 
@@ -134,7 +126,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         resolve(img);
                     };
                     video.onerror = function () {
-                        console.error("Video yüklenemedi:", file.name);
                         const errorDiv = document.createElement('div');
                         errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
                         errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
@@ -173,10 +164,10 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // --- Form gönderimi (fetch ile) ---
+    // Submit event
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
+
         if (selectedFiles.length === 0) {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
@@ -184,11 +175,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const formData = new FormData();
         formData.append("name", document.querySelector("input[name='name']").value);
+        const note = document.querySelector("textarea[name='note']").value;
+        formData.append("note", note);
 
         selectedFiles.forEach(file => {
             const uniqueFileName = Date.now() + "_" + file.name;
             formData.append("file", new File([file], uniqueFileName, { type: file.type }));
         });
+
+        console.log("Gönderilecek dosyalar:", selectedFiles.map(f => f.name));
+        alert("Dosyalar gönderiliyor..."); // Test amaçlı
 
         fetch(mainForm.action, {
             method: "POST",
@@ -204,4 +200,5 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Dosyalar yüklenirken bir hata oluştu.");
         });
     });
+
 });
