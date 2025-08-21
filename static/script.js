@@ -2,21 +2,22 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
-    let uploadedFilesCount = 0;
-    let totalFilesToUpload = 0;
+
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
     const submitBtn = document.getElementById("submitBtn");
     const mainForm = document.getElementById("mainForm");
-    const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
-    const uploadProgressBar = document.getElementById("uploadProgressBar");
-    const uploadProgressText = document.getElementById("uploadProgressText");
+
+    const fileInput = document.getElementById('real-file');
+    const previewContainer = document.getElementById('uploadPreview');
+    const uploadText = document.getElementById('uploadText');
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
+    // --- Mikrofon kaydı ---
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -67,10 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    const fileInput = document.getElementById('real-file');
-    const previewContainer = document.getElementById('uploadPreview');
-    const uploadText = document.getElementById('uploadText');
-
+    // --- Dosya seçimi ve önizleme ---
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
@@ -175,6 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // --- Form gönderimi (fetch ile) ---
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -205,3 +204,4 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Dosyalar yüklenirken bir hata oluştu.");
         });
     });
+});
