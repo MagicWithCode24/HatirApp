@@ -2,8 +2,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
-    let uploadedFilesCount = 0;
-    let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -17,12 +15,14 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    micBtn.addEventListener("click", (e) => {
+    // Mikrofon panel toggle
+    micBtn.addEventListener("click", e => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
     });
 
-    startBtn.addEventListener("click", async (e) => {
+    // Ses kaydı başlat
+    startBtn.addEventListener("click", async e => {
         e.preventDefault();
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -30,9 +30,7 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder.start();
             audioChunks = [];
 
-            mediaRecorder.addEventListener("dataavailable", event => {
-                audioChunks.push(event.data);
-            });
+            mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
 
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
@@ -59,10 +57,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     });
 
+    // Ses kaydı durdur
     stopBtn.addEventListener("click", () => {
-        if (mediaRecorder && mediaRecorder.state === "recording") {
-            mediaRecorder.stop();
-        }
+        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
@@ -71,6 +68,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
 
+    // Dosya seçimi ve önizleme
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
@@ -90,65 +88,52 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
-        let allPreviews = [];
         let loadedCount = 0;
 
         const updateFilePreviewProgress = () => {
             loadedCount++;
-            const percentComplete = (loadedCount / selectedFiles.length) * 100;
-            filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
+            const percent = (loadedCount / selectedFiles.length) * 100;
+            filePreviewProgressBar.style.width = percent.toFixed(0) + '%';
+            filePreviewProgressText.textContent = percent.toFixed(0) + '%';
             if (loadedCount === selectedFiles.length) {
-                setTimeout(() => {
-                    filePreviewProgressBarContainer.style.display = 'none';
-                }, 500);
+                setTimeout(() => filePreviewProgressBarContainer.style.display = 'none', 500);
             }
         };
 
-        selectedFiles.forEach(file => {
+        const allPreviews = selectedFiles.map(file => new Promise(resolve => {
             if (file.type.startsWith("image/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const img = document.createElement("img");
-                        img.src = e.target.result;
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    reader.readAsDataURL(file);
-                }));
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.classList.add("preview-img");
+                    updateFilePreviewProgress();
+                    resolve(img);
+                };
+                reader.readAsDataURL(file);
             } else if (file.type.startsWith("video/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const video = document.createElement('video');
-                    video.preload = 'metadata';
-                    video.src = URL.createObjectURL(file);
-                    video.onloadeddata = function () { video.currentTime = 0; };
-                    video.onseeked = function () {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const img = document.createElement('img');
-                        img.src = canvas.toDataURL('image/jpeg');
-                        URL.revokeObjectURL(video.src);
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    video.onerror = function () {
-                        console.error("Video yüklenemedi:", file.name);
-                        const errorDiv = document.createElement('div');
-                        errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
-                        errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
-                        updateFilePreviewProgress();
-                        resolve(errorDiv);
-                    };
-                }));
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                video.src = URL.createObjectURL(file);
+                video.onloadeddata = () => { video.currentTime = 0; };
+                video.onseeked = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    const img = document.createElement('img');
+                    img.src = canvas.toDataURL('image/jpeg');
+                    img.classList.add("preview-img");
+                    URL.revokeObjectURL(video.src);
+                    updateFilePreviewProgress();
+                    resolve(img);
+                };
             } else {
                 updateFilePreviewProgress();
-                allPreviews.push(Promise.resolve(null));
+                resolve(null);
             }
-        });
+        }));
 
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
@@ -175,49 +160,42 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Form submit ve S3 yükleme
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-    
         if (selectedFiles.length === 0) {
             alert("Lütfen bir dosya seçin.");
             return;
         }
-    
+
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-    
+
         const formData = new FormData();
         formData.append("name", document.querySelector("input[name='name']").value);
-        
-        selectedFiles.forEach(file => {
-            formData.append("file", file); // burada tüm dosyalar tek FormData’ya ekleniyor
-        });
-    
+        selectedFiles.forEach(file => formData.append("file", file));
+
         const xhr = new XMLHttpRequest();
-    
-        xhr.upload.addEventListener('progress', function(event) {
+        xhr.upload.addEventListener('progress', event => {
             if (event.lengthComputable) {
                 const percent = (event.loaded / event.total) * 100;
                 uploadProgressBar.style.width = percent.toFixed(0) + '%';
                 uploadProgressText.textContent = percent.toFixed(0) + '%';
             }
         });
-    
-        xhr.addEventListener('load', function() {
+
+        xhr.addEventListener('load', () => {
             uploadProgressBar.style.width = '100%';
             uploadProgressText.textContent = '100%';
             setTimeout(() => window.location.href = mainForm.action, 500);
         });
-    
-        xhr.addEventListener('error', function() {
-            alert("Dosya yükleme sırasında bir hata oluştu!");
-        });
-    
+
+        xhr.addEventListener('error', () => alert("Dosya yükleme sırasında bir hata oluştu!"));
+
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     });
-
-
+});
