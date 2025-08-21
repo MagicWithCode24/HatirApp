@@ -72,9 +72,18 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadText = document.getElementById('uploadText');
 
     fileInput.addEventListener('change', () => {
+        const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1 GB
         const newFiles = Array.from(fileInput.files);
+    
+        for (const file of newFiles) {
+            if (file.size > MAX_FILE_SIZE) {
+                alert(`Dosya çok büyük: ${file.name}. Maksimum 1 GB.`);
+                return; // yüklemeyi durdur
+            }
+        }
+    
         selectedFiles = [...selectedFiles, ...newFiles];
-
+    
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
@@ -87,12 +96,12 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-
+    
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
         let allPreviews = [];
         let loadedCount = 0;
-
+    
         const updateFilePreviewProgress = () => {
             loadedCount++;
             const percentComplete = (loadedCount / selectedFiles.length) * 100;
@@ -104,6 +113,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, 500);
             }
         };
+
 
         selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
@@ -231,4 +241,5 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
