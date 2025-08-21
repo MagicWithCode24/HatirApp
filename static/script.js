@@ -2,8 +2,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
-    let uploadedFilesCount = 0;
-    let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -16,9 +14,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
-
-    // DEBUG: Hata ayıklama için
-    console.log("Script yüklendi");
 
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
@@ -52,7 +47,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewArea.appendChild(audio);
 
                 selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
-                console.log("Ses kaydı eklendi, toplam dosya:", selectedFiles.length);
             });
 
             startBtn.disabled = true;
@@ -77,10 +71,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-        console.log("Seçilen yeni dosyalar:", newFiles.length, "isimler:", newFiles.map(f => f.name));
-        
         selectedFiles = [...selectedFiles, ...newFiles];
-        console.log("Toplam dosya:", selectedFiles.length);
 
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
@@ -190,70 +181,64 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        console.log("Gönderim başlıyor. Toplam dosya:", selectedFiles.length);
-        console.log("Dosya türleri:", selectedFiles.map(f => f.type));
-
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
 
-        uploadedFilesCount = 0;
-        totalFilesToUpload = selectedFiles.length;
-
-        // ÖNCE NOT DOSYASINI EKLEYELİM, SONRA DİĞER DOSYALARI
-        const noteContent = document.querySelector("textarea[name='note']").value;
-        if (noteContent.trim() !== "") {
-            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            // Not dosyasını selectedFiles dizisine ekleyelim
-            selectedFiles.push(noteFile);
-            totalFilesToUpload = selectedFiles.length;
-            console.log("Not dosyası eklendi, yeni toplam:", totalFilesToUpload);
-        }
-
-        // TÜM DOSYALARI TEK TEK GÖNDER
-        selectedFiles.forEach(file => {
-            console.log("Yüklenecek dosya:", file.name, "tür:", file.type, "boyut:", file.size);
-            uploadFile(file);
-        });
+        // TEK BİR FORMDATA İLE TÜM DOSYALARI GÖNDER
+        uploadAllFilesTogether();
     });
 
-    function uploadFile(file) {
+    function uploadAllFilesTogether() {
         const formData = new FormData();
+        const userName = document.querySelector("input[name='name']").value;
         
-        // SADECE BİR DOSYA EKLE
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
-        formData.append("original_filename", file.name); // Orijinal dosya adı
+        // Kullanıcı adını ekle
+        formData.append("name", userName);
+        
+        // TÜM dosyaları ekle (fotoğraflar, ses, her şey)
+        selectedFiles.forEach((file, index) => {
+            formData.append(`files`, file); // Aynı key ile tüm dosyalar
+        });
 
-        console.log("FormData hazır, dosya:", file.name);
+        // Not içeriğini ekle (eğer varsa)
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        if (noteContent.trim() !== "") {
+            formData.append("note", noteContent);
+        }
+
+        console.log("Toplam dosya sayısı:", selectedFiles.length);
+        console.log("Toplam boyut:", selectedFiles.reduce((sum, file) => sum + file.size, 0) / 1024 / 1024, "MB");
 
         const xhr = new XMLHttpRequest();
         
-        xhr.addEventListener('load', function() {
-            uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
-            console.log("Başarılı:", file.name, "(", uploadedFilesCount, "/", totalFilesToUpload, ")");
-
-            if (uploadedFilesCount === totalFilesToUpload) {
-                console.log("Tüm dosyalar yüklendi!");
-                setTimeout(() => { 
-                    window.location.href = mainForm.action; 
-                }, 500);
+        xhr.upload.addEventListener('progress', function(event) {
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             }
         });
         
+        xhr.addEventListener('load', function() {
+            console.log("Tüm dosyalar başarıyla yüklendi!");
+            setTimeout(() => { 
+                window.location.href = mainForm.action; 
+            }, 500);
+        });
+        
         xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası:", file.name);
-            alert(`Yüklenemeyen dosya: ${file.name}`);
+            console.error("Dosya yükleme hatası");
+            alert("Dosya yüklenirken hata oluştu. Dosya boyutları çok büyük olabilir.");
+            if (submitBtn) {
+                submitBtn.textContent = 'Gönder';
+                submitBtn.disabled = false;
+            }
         });
 
         xhr.open('POST', mainForm.action);
-        console.log("İstek gönderiliyor:", file.name);
         xhr.send(formData);
     }
 });
