@@ -2,8 +2,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
-    let uploadedFilesCount = 0;
-    let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -175,24 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    mainForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (selectedFiles.length === 0) {
-            alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
-            return;
-        }
-    
-        if (submitBtn) {
-            submitBtn.textContent = 'Yükleniyor...';
-            submitBtn.disabled = true;
-            uploadProgressBarContainer.style.display = 'block';
-        }
-    
-        // Tek istekle tüm dosyaları gönder
-        uploadAllFiles();
-    });
-
+    // UploadAllFiles fonksiyonunu doğru yere taşı
     function uploadAllFiles() {
         const formData = new FormData();
         const name = document.querySelector("input[name='name']").value;
@@ -218,6 +199,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 const percentComplete = (event.loaded / event.total) * 100;
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
                 uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+                
+                // Yükleme tamamlandığında butonu güncelle
+                if (percentComplete === 100 && submitBtn) {
+                    submitBtn.textContent = 'Yönlendiriliyor...';
+                }
             }
         });
         
@@ -230,11 +216,32 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.addEventListener('error', function() {
             console.error("Dosya yükleme hatası");
             alert("Dosyalar yüklenirken bir hata oluştu.");
+            if (submitBtn) {
+                submitBtn.textContent = 'Gönder';
+                submitBtn.disabled = false;
+            }
         });
     
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
     }
+
+    // Submit event listener - EN SONA EKLENDİ
+    mainForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        if (selectedFiles.length === 0) {
+            alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
+            return;
+        }
+    
+        if (submitBtn) {
+            submitBtn.textContent = 'Yükleniyor...';
+            submitBtn.disabled = true;
+            uploadProgressBarContainer.style.display = 'block';
+        }
+    
+        // Tek istekle tüm dosyaları gönder
+        uploadAllFiles();
+    });
 });
-
-
