@@ -6,15 +6,19 @@ document.addEventListener("DOMContentLoaded", function () {
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
     const stopBtn = document.getElementById("stopBtn");
+    const submitBtn = document.getElementById("submitBtn");
     const mainForm = document.getElementById("mainForm");
-
-    const previewContainer = document.getElementById('uploadPreview');
-    const uploadText = document.getElementById('uploadText');
+    const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
+    const uploadProgressBar = document.getElementById("uploadProgressBar");
+    const uploadProgressText = document.getElementById("uploadProgressText");
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
+    const fileInput = document.getElementById('real-file');
+    const previewContainer = document.getElementById('uploadPreview');
+    const uploadText = document.getElementById('uploadText');
 
-    // Mikrofon paneli
+    // Mikrofon ve ses kaydı kodu (önceki gibi)
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -28,12 +32,13 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder.start();
             audioChunks = [];
 
-            mediaRecorder.addEventListener("dataavailable", event => audioChunks.push(event.data));
+            mediaRecorder.addEventListener("dataavailable", event => {
+                audioChunks.push(event.data);
+            });
 
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-
                 const previewArea = document.getElementById("audioPreview");
                 previewArea.innerHTML = "";
                 const audio = document.createElement("audio");
@@ -56,13 +61,14 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     stopBtn.addEventListener("click", () => {
-        if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop();
+        if (mediaRecorder && mediaRecorder.state === "recording") {
+            mediaRecorder.stop();
+        }
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
 
-    // Dosya seçimi ve önizleme
-    const fileInput = document.getElementById('real-file');
+    // Foto / video önizleme
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
@@ -91,7 +97,9 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
             if (loadedCount === selectedFiles.length) {
-                setTimeout(() => { filePreviewProgressBarContainer.style.display = 'none'; }, 500);
+                setTimeout(() => {
+                    filePreviewProgressBarContainer.style.display = 'none';
+                }, 500);
             }
         };
 
@@ -126,6 +134,7 @@ document.addEventListener("DOMContentLoaded", function () {
                         resolve(img);
                     };
                     video.onerror = function () {
+                        console.error("Video yüklenemedi:", file.name);
                         const errorDiv = document.createElement('div');
                         errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
                         errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
@@ -164,7 +173,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Submit event
+    // Submit butonu - fetch ile tek seferde gönderim + yükleme barı
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
 
@@ -173,32 +182,47 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Buton ve progress bar aktif et
+        submitBtn.textContent = 'Yükleniyor...';
+        submitBtn.disabled = true;
+        uploadProgressBarContainer.style.display = 'block';
+        uploadProgressBar.style.width = '0%';
+        uploadProgressText.textContent = '0%';
+
         const formData = new FormData();
         formData.append("name", document.querySelector("input[name='name']").value);
-        const note = document.querySelector("textarea[name='note']").value;
-        formData.append("note", note);
+        formData.append("note", document.querySelector("textarea[name='note']").value);
+
+        // Dosyaları eklerken simüle edilen progress
+        let uploadedCount = 0;
+        const totalFiles = selectedFiles.length;
 
         selectedFiles.forEach(file => {
             const uniqueFileName = Date.now() + "_" + file.name;
             formData.append("file", new File([file], uniqueFileName, { type: file.type }));
+
+            uploadedCount++;
+            const percentComplete = (uploadedCount / totalFiles) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
         });
 
-        console.log("Gönderilecek dosyalar:", selectedFiles.map(f => f.name));
-        alert("Dosyalar gönderiliyor..."); // Test amaçlı
-
+        // Fetch ile gönder
         fetch(mainForm.action, {
             method: "POST",
             body: formData
         })
         .then(response => response.text())
         .then(data => {
-            console.log("Sunucudan gelen cevap:", data);
+            uploadProgressBar.style.width = '100%';
+            uploadProgressText.textContent = '100%';
             window.location.href = mainForm.action;
         })
         .catch(err => {
             console.error("Yükleme hatası:", err);
             alert("Dosyalar yüklenirken bir hata oluştu.");
+            submitBtn.textContent = 'Gönder';
+            submitBtn.disabled = false;
         });
     });
-
 });
