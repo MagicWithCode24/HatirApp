@@ -189,26 +189,20 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBarContainer.style.display = 'block';
         }
     
-        // TEK SEFERDE TÜM DOSYALARI YÜKLE
         uploadAllFiles(selectedFiles);
     });
     
-    // YENİ FONKSİYON: Tüm dosyaları tek request'te yükle
     function uploadAllFiles(files) {
         const formData = new FormData();
         
-        // Tüm dosyaları aynı FormData'ya ekle
         files.forEach((file, index) => {
-            formData.append(`files[]`, file); // files[] array olarak gönder
+            formData.append(`file`, file);
         });
         
-        // Diğer form verilerini ekle
         formData.append("name", document.querySelector("input[name='name']").value);
-        // Diğer form field'ları varsa buraya ekleyin
     
         const xhr = new XMLHttpRequest();
         
-        // Upload progress tracking
         xhr.upload.addEventListener('progress', function(event) {
             if (event.lengthComputable) {
                 const percentComplete = (event.loaded / event.total) * 100;
@@ -241,12 +235,10 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
     
-    // UI'yi sıfırlamak için yardımcı fonksiyon
     function resetUploadUI() {
         if (submitBtn) {
             submitBtn.textContent = 'Yükle';
             submitBtn.disabled = false;
             uploadProgressBarContainer.style.display = 'none';
         }
-    }
 
