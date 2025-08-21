@@ -197,7 +197,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function uploadFile(file) {
         const formData = new FormData();
-        formData.append("file", file);
+        const uniqueFileName = Date.now() + "_" + file.name;
+        formData.append("file", new File([file], uniqueFileName, { type: file.type }));
         formData.append("name", document.querySelector("input[name='name']").value);
         
         const xhr = new XMLHttpRequest();
@@ -225,6 +226,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
