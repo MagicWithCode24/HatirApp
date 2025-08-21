@@ -3,18 +3,17 @@ from flask import Flask, render_template, request, redirect, url_for, flash, jso
 from werkzeug.utils import secure_filename
 import boto3
 from botocore.client import Config
-from botocore.exceptions import ClientError
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'your_super_secret_key')
 
 AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
 AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+AWS_S3_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
 AWS_S3_REGION = os.environ.get('AWS_S3_REGION')
-BASE_BUCKET_NAME = os.environ.get('AWS_S3_BUCKET_NAME')
 
 s3_client = None
-if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and BASE_BUCKET_NAME and AWS_S3_REGION:
+if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_S3_BUCKET_NAME and AWS_S3_REGION:
     try:
         s3_client = boto3.client(
             's3',
@@ -30,31 +29,6 @@ if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and BASE_BUCKET_NAME and AWS_S3_R
 else:
     print("UYARI: AWS S3 ortam değişkenleri eksik. Dosya yüklemeleri çalışmayacak.")
 
-def create_s3_bucket_if_not_exists(bucket_name, region):
-    if not s3_client:
-        return False, "S3 istemcisi başlatılmadı."
-    
-    try:
-        s3_client.head_bucket(Bucket=bucket_name)
-        print(f"Bucket '{bucket_name}' zaten mevcut.")
-        return True, None
-    except ClientError as e:
-        error_code = e.response['Error']['Code']
-        if error_code == '404':
-            try:
-                if region == 'us-east-1':
-                    s3_client.create_bucket(Bucket=bucket_name)
-                else:
-                    s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={'LocationConstraint': region})
-                print(f"Bucket '{bucket_name}' başarıyla oluşturuldu.")
-                return True, None
-            except ClientError as ce:
-                print(f"HATA: Bucket oluşturulurken hata oluştu: {ce}")
-                return False, f"Bucket oluşturma hatası: {ce}"
-        else:
-            print(f"HATA: Bucket kontrol edilirken hata oluştu: {e}")
-            return False, f"Bucket kontrol hatası: {e}"
-
 def upload_file_to_s3(file, username):
     if not s3_client:
         return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
@@ -63,12 +37,32 @@ def upload_file_to_s3(file, username):
     s3_file_path = f"{username}/{filename}"
 
     try:
-        s3_client.upload_fileobj(file, username, s3_file_path)
-        print(f"'{filename}' S3'e yüklendi: s3://{username}/{s3_file_path}")
-        return f"https://{username}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
+        s3_client.upload_fileobj(file, AWS_S3_BUCKET_NAME, s3_file_path)
+        print(f"'{filename}' S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_file_path}")
+        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_file_path}", None
     except Exception as e:
         print(f"Hata: '{filename}' S3'e yüklenirken bir sorun oluştu: {e}")
         return None, f"S3 yükleme hatası: {e}"
+
+def upload_note_to_s3(username, note_content):
+    if not s3_client:
+        return None, "S3 istemcisi başlatılmadı veya kimlik bilgileri eksik."
+
+    note_filename = f"{username}_note.txt"
+    s3_note_path = f"{username}/{note_filename}"
+
+    try:
+        s3_client.put_object(
+            Bucket=AWS_S3_BUCKET_NAME,
+            Key=s3_note_path,
+            Body=note_content.encode('utf-8'),
+            ContentType='text/plain'
+        )
+        print(f"Not dosyası S3'e yüklendi: s3://{AWS_S3_BUCKET_NAME}/{s3_note_path}")
+        return f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_note_path}", None
+    except Exception as e:
+        print(f"Hata: Not dosyası S3'e yüklenirken bir sorun oluştu: {e}")
+        return None, f"S3 not yükleme hatası: {e}"
 
 @app.route('/')
 def home():
@@ -80,41 +74,60 @@ def ana():
 
 @app.route('/son', methods=['POST'])
 def son():
-    username = request.form.get('name', '').replace(' ', '-').lower()
-    uploaded_files = request.files.getlist('files')
+    username = request.form.get('name')
+    note_content = request.form.get('note')
+    uploaded_files = request.files.getlist('file')
 
     if not username:
-        return jsonify(success=False, error="Lütfen adınızı ve soyadınızı girin."), 400
-
-    if not uploaded_files:
-        return jsonify(success=False, error="Yüklenecek dosya veya not bulunamadı."), 400
+        flash('Lütfen bir kullanıcı adı girin!', 'error')
+        return redirect(url_for('ana'))
 
     if not s3_client:
-        return jsonify(success=False, error="Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı."), 500
+        flash('Depolama hizmeti (Amazon S3) ayarları eksik veya hatalı. Lütfen yöneticinizle iletişime geçin.', 'error')
+        return redirect(url_for('ana'))
 
-    # Kullanıcı adına göre S3 bucket'ı oluştur (veya varlığını kontrol et)
-    is_bucket_ready, bucket_error = create_s3_bucket_if_not_exists(username, AWS_S3_REGION)
-    if not is_bucket_ready:
-        print(f"Bucket '{username}' oluşturulamadı: {bucket_error}")
-        return jsonify(success=False, error=f"Depolama klasörü oluşturulurken hata oluştu: {bucket_error}"), 500
+    if note_content:
+        note_s3_url, note_error = upload_note_to_s3(username, note_content)
+        if note_error:
+            flash(f'Not yüklenirken bir hata oluştu: {note_error}', 'error')
+        else:
+            flash('Not başarıyla yüklendi.', 'success')
 
-    errors = []
     for file in uploaded_files:
         if file and file.filename != '':
             file_s3_url, file_error = upload_file_to_s3(file, username)
             if file_error:
-                errors.append(f"'{file.filename}' yüklenirken hata: {file_error}")
+                flash(f"'{file.filename}' yüklenirken bir hata oluştu: {file_error}", 'error')
+            else:
+                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
         else:
-            errors.append("Boş dosya bulundu.")
-    
-    if errors:
-        return jsonify(success=False, error="Yüklemelerden bazıları başarısız oldu: " + " ".join(errors)), 500
-    else:
-        return jsonify(success=True, message="Tüm dosyalar başarıyla yüklendi!"), 200
+            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
+
+    flash('Tüm işlemler tamamlandı!', 'success')
+    return redirect(url_for('son'))
 
 @app.route('/son')
 def son_page():
     return render_template('son.html')
+
+@app.route('/upload-audio', methods=['POST'])
+def upload_audio():
+    if 'audio' not in request.files:
+        return jsonify(success=False, error="Ses kaydı bulunamadı."), 400
+
+    audio_file = request.files['audio']
+    username = request.form.get('name')
+    filename = f"{username}_audio.wav"
+    s3_audio_path = f"{username}/{filename}"
+
+    try:
+        s3_client.upload_fileobj(audio_file, AWS_S3_BUCKET_NAME, s3_audio_path)
+        audio_url = f"https://{AWS_S3_BUCKET_NAME}.s3.{AWS_S3_REGION}.amazonaws.com/{s3_audio_path}"
+        print(f"Ses kaydı S3'e yüklendi: {audio_url}")
+        return jsonify(success=True, url=audio_url), 200
+    except Exception as e:
+        print(f"Hata: Ses kaydı yüklenirken bir sorun oluştu: {e}")
+        return jsonify(success=False, error="Ses kaydı yüklenemedi."), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
