@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
-    let selectedFiles = []; // Dosyaların saklanacağı dizi
+    let selectedFiles = [];
     let uploadedFilesCount = 0;
     let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
@@ -17,7 +17,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // ---------- Mikrofon Kaydı ---------- //
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -49,7 +48,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
 
-                // Ses kaydını da selectedFiles'a ekliyoruz
                 selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
             });
 
@@ -69,7 +67,6 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    // ---------- Dosya Seçimi ve Önizleme ---------- //
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -178,7 +175,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // ---------- Gönder Butonu ---------- //
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -196,7 +192,6 @@ document.addEventListener("DOMContentLoaded", function () {
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
 
-        // Tüm dosyaları sırayla veya eş zamanlı olarak yükle
         selectedFiles.forEach(file => uploadFile(file));
     });
 
@@ -207,7 +202,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
-            // İsteğe bağlı: Tek tek dosya için ilerleme barı
+            
         });
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
@@ -216,7 +211,6 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
             
             if (uploadedFilesCount === totalFilesToUpload) {
-                // Tüm yüklemeler tamamlandı, yönlendirme yap
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
                 }, 500);
@@ -231,3 +225,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
