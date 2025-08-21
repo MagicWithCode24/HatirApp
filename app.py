@@ -76,18 +76,7 @@ def ana():
 def son():
     username = request.form.get('name')
     note_content = request.form.get('note')
-    
-    for key in request.files:
-        file = request.files[key]
-        if file and file.filename != '':
-            file_s3_url, file_error = upload_file_to_s3(file, username)
-            if file_error:
-                flash(f"'{file.filename}' yüklenirken hata: {file_error}", 'error')
-            else:
-                flash(f"'{file.filename}' başarıyla yüklendi.", 'success')
-        else:
-            flash(f"Boş dosya seçildi veya dosya adı yok.", 'info')
-
+    uploaded_files = request.files.getlist('file')
 
     if not username:
         flash('Lütfen bir kullanıcı adı girin!', 'error')
@@ -143,4 +132,3 @@ def upload_audio():
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))
     app.run(debug=False, host='0.0.0.0', port=port)
-
