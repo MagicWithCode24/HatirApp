@@ -48,7 +48,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
 
-                selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
+                // Ses dosyasını benzersiz isimle ekle
+                const timestamp = Date.now();
+                selectedFiles.push(new File([audioBlob], `recording_${timestamp}.wav`, { type: 'audio/wav' }));
             });
 
             startBtn.disabled = true;
@@ -73,6 +75,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
+        // DÜZELTME: Dosyaları doğru şekilde birleştir
+        selectedFiles = selectedFiles.filter(file => file.name.startsWith('recording_') || file.name === 'note.txt');
         selectedFiles = [...selectedFiles, ...newFiles];
 
         previewContainer.innerHTML = '';
@@ -175,7 +179,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    mainForm.addEventListener('submit', function(e) {
+    mainForm.addEventListener('submit', async function(e) {
         e.preventDefault();
         
         if (selectedFiles.length === 0) {
@@ -189,22 +193,83 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadProgressBarContainer.style.display = 'block';
         }
 
+        // Not dosyasını ekle
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        if (noteContent.trim() !== "") {
+            const timestamp = Date.now();
+            const noteFile = new File([noteContent], `note_${timestamp}.txt`, { type: "text/plain" });
+            selectedFiles.push(noteFile);
+        }
+
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
 
-        selectedFiles.forEach(file => uploadFile(file));
+        console.log('Yüklenecek dosyalar:', selectedFiles.map(f => f.name));
+
+        // DÜZELTME: Sıralı upload yerine Promise.all kullan
+        try {
+            await uploadAllFiles(selectedFiles);
+        } catch (error) {
+            console.error('Upload hatası:', error);
+            alert('Dosya yükleme hatası oluştu');
+            if (submitBtn) {
+                submitBtn.textContent = 'Gönder';
+                submitBtn.disabled = false;
+                uploadProgressBarContainer.style.display = 'none';
+            }
+        }
     });
 
+    // DÜZELTME: Tüm dosyaları tek seferde yükle
+    async function uploadAllFiles(files) {
+        const formData = new FormData();
+        const userName = document.querySelector("input[name='name']").value;
+        
+        // Tüm dosyaları FormData'ya ekle
+        files.forEach((file, index) => {
+            formData.append("files", file);
+        });
+        
+        formData.append("name", userName);
+
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            
+            xhr.upload.addEventListener('progress', function(event) {
+                if (event.lengthComputable) {
+                    const percentComplete = (event.loaded / event.total) * 100;
+                    uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                    uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+                }
+            });
+            
+            xhr.addEventListener('load', function() {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    uploadProgressBar.style.width = '100%';
+                    uploadProgressText.textContent = '100%';
+                    setTimeout(() => { 
+                        window.location.href = mainForm.action; 
+                    }, 500);
+                    resolve();
+                } else {
+                    reject(new Error('Upload başarısız: ' + xhr.status));
+                }
+            });
+            
+            xhr.addEventListener('error', function() {
+                reject(new Error('Network hatası'));
+            });
+
+            xhr.open('POST', mainForm.action);
+            xhr.send(formData);
+        });
+    }
+
+    // ESKI uploadFile fonksiyonu - artık kullanılmıyor
     function uploadFile(file) {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
-
-        const noteContent = document.querySelector("textarea[name='note']").value;
-        if (noteContent.trim() !== "") {
-            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("file", noteFile);  
-        }
 
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
@@ -231,4 +296,3 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
-
