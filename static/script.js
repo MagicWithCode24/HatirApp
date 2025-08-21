@@ -175,6 +175,8 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    let folderCreated = false;
+    
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -197,8 +199,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function uploadFile(file) {
         const formData = new FormData();
-        formData.append("file", file);
-        formData.append("name", document.querySelector("input[name='name']").value);
+
+        const uniqueFileName = Date.now() + "_" + file.name;
+        formData.append("file", new File([file], uniqueFileName, { type: file.type }));
+        
+        if (!folderCreated) {
+            formData.append("name", document.querySelector("input[name='name']").value);
+            folderCreated = true;
+        }
 
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
@@ -225,3 +233,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
