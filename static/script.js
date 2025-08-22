@@ -277,7 +277,7 @@ document.addEventListener("DOMContentLoaded", function () {
             warningContainer.id = 'warningContainer';
             warningContainer.style.margin = '10px 0';
             warningContainer.style.color = '#333';
-            warningContainer.style.fontSize = '14px';
+            warningContainer.style.fontSize = '20px';
             warningContainer.style.lineHeight = '1.4';
             warningContainer.style.textAlign = 'center';
             uploadProgressBarContainer.parentNode.insertBefore(warningContainer, uploadProgressBarContainer);
@@ -357,4 +357,5 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
