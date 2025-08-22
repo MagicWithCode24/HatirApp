@@ -2,6 +2,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
+    let uploadedFilesCount = 0;
+    let totalFilesToUpload = 0;
+    let totalBytesToUpload = 0;
+    let totalBytesUploaded = 0;
 
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
@@ -27,11 +31,13 @@ document.addEventListener("DOMContentLoaded", function () {
         recordPanel.classList.toggle("active");
 
         if (recordPanel.classList.contains("active")) {
+            // Görünür ve uygun şekilde etkinleştir
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "inline-block";
             startBtn.disabled = false;
-            stopBtn.disabled = true;
+            stopBtn.disabled = true; // başta stop pasif
         } else {
+            // Tekrar gizle
             startBtn.style.display = "none";
             stopBtn.style.display = "none";
             startBtn.disabled = true;
@@ -84,6 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
+    // Dosya yükleme ve önizleme kısmı aynı kalıyor
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -104,28 +111,25 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-
-        // Önizleme için dosya sayısını 4 ile sınırla
+    
         const maxNormalPreview = 2;
-        const maxOverlayPreview = 2; // Sadece 2 dosya üst üste binecek
-        const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
-
+        const maxOverlayPreview = 3;
         let allPreviews = [];
         let loadedCount = 0;
     
         const updateFilePreviewProgress = () => {
             loadedCount++;
-            const percentComplete = (loadedCount / filesToPreview.length) * 100;
+            const percentComplete = (loadedCount / selectedFiles.length) * 100;
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (loadedCount === filesToPreview.length) {
+            if (loadedCount === selectedFiles.length) {
                 setTimeout(() => {
                     filePreviewProgressBarContainer.style.display = 'none';
                 }, 500);
             }
         };
     
-        filesToPreview.forEach(file => {
+        selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
                     const reader = new FileReader();
@@ -138,6 +142,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     reader.readAsDataURL(file);
                 }));
             } else {
+                // Video preview logic is removed. We'll create a simple placeholder instead.
                 updateFilePreviewProgress();
                 const placeholder = document.createElement('div');
                 placeholder.textContent = file.type.startsWith("video/") ? 'Video dosyası' : 'Diğer dosya';
@@ -149,33 +154,29 @@ document.addEventListener("DOMContentLoaded", function () {
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
             validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
-            
-            const totalExtraCount = selectedFiles.length - maxNormalPreview;
+            const totalExtraCount = validPreviews.length - maxNormalPreview;
             if (totalExtraCount > 0) {
                 const overlayStackContainer = document.createElement("div");
                 overlayStackContainer.className = "overlay-stack-container";
                 const slideDistance = 3.75;
-                
                 validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
                     el.classList.add("overlay");
                     el.style.left = `${index * slideDistance}px`;
                     el.style.zIndex = maxOverlayPreview - index;
                     overlayStackContainer.appendChild(el);
                 });
-                
-                // Üst üste binen dosya sayısını gösteren etiket
                 if (totalExtraCount > 0) {
                     const extra = document.createElement("div");
                     extra.className = "extra-count";
                     extra.textContent = `+${totalExtraCount}`;
                     overlayStackContainer.appendChild(extra);
                 }
-                
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
     });
 
+    // Form submit ve uploadFile fonksiyonu aynı kalıyor
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -189,47 +190,60 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%'; 
-            uploadProgressText.textContent = '0%';
+            uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
 
-        const formData = new FormData();
-        const noteContent = document.querySelector("textarea[name='note']").value;
+        uploadedFilesCount = 0;
+        totalFilesToUpload = selectedFiles.length;
 
+        totalBytesToUpload = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+        totalBytesUploaded = 0;
+        
+        selectedFiles.forEach(file => uploadFile(file));
+    });
+
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
+
+        const noteContent = document.querySelector("textarea[name='note']").value;
         if (noteContent.trim() !== "") {
             const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("note_file", noteFile); 
+            formData.append("file", noteFile);  
         }
 
-        selectedFiles.forEach(file => {
-            formData.append("file", file);
-        });
-
         const xhr = new XMLHttpRequest();
-        
+        let fileLastUploaded = 0;
         xhr.upload.addEventListener("progress", function(event) {
             if (event.lengthComputable) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                const loadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
-                const totalMB = (event.total / (1024 * 1024)).toFixed(2);
-                
+                const diff = event.loaded - fileLastUploaded;
+                totalBytesUploaded += diff;
+                fileLastUploaded = event.loaded;
+        
+                const percentComplete = (totalBytesUploaded / totalBytesToUpload) * 100;
+                const loadedMB = (totalBytesUploaded / (1024 * 1024)).toFixed(2);
+                const totalMB = (totalBytesToUpload / (1024 * 1024)).toFixed(2);
+        
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
                 uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
             }
         });
         
         xhr.addEventListener('load', function() {
-            setTimeout(() => { 
-                window.location.href = mainForm.action; 
-            }, 500);
+            uploadedFilesCount++;
+            if (uploadedFilesCount === totalFilesToUpload) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
+            }
         });
-
         xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası.");
-            alert("Dosya yükleme sırasında bir hata oluştu.");
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
         });
 
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
-    });
+    }
 });
