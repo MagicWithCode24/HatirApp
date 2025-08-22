@@ -201,15 +201,20 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
+        // Dosya sayısı ve boyut bilgisi göster
+        const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+        const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
+        console.log(`${selectedFiles.length} dosya yükleniyor, toplam boyut: ${totalSizeMB}MB`);
+
         if (submitBtn) {
-            submitBtn.textContent = 'Yükleniyor...';
+            submitBtn.textContent = `Yükleniyor... (${selectedFiles.length} dosya)`;
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
             uploadProgressBar.style.width = '0%';
             uploadProgressText.textContent = '0%';
         }
 
-        // Tek FormData oluştur
+        // Tek büyük FormData oluştur - sınır yok!
         const formData = new FormData();
         
         // İsim verisini ekle
@@ -222,39 +227,52 @@ document.addEventListener("DOMContentLoaded", function () {
             formData.append("files", noteFile);
         }
         
-        // Tüm dosyaları ekle
+        // TÜM dosyaları tek seferde ekle - 1000 dosya olsa bile!
         selectedFiles.forEach((file, index) => {
             formData.append("files", file);
         });
 
-        // Tek XMLHttpRequest ile gönder
+        // Tek dev XMLHttpRequest ile gönder
         const xhr = new XMLHttpRequest();
         
+        // Upload progress - gerçek zamanlı
         xhr.upload.addEventListener('progress', function(event) {
             if (event.lengthComputable) {
                 const percentComplete = (event.loaded / event.total) * 100;
+                const loadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
+                const totalMB = (event.total / (1024 * 1024)).toFixed(2);
+                
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = `${percentComplete.toFixed(0)}% (${loadedMB}/${totalMB}MB)`;
             }
         });
         
         xhr.addEventListener('load', function() {
             if (xhr.status === 200) {
                 uploadProgressBar.style.width = '100%';
-                uploadProgressText.textContent = '100%';
+                uploadProgressText.textContent = `100% - Tamamlandı! (${totalSizeMB}MB)`;
+                console.log(`✅ ${selectedFiles.length} dosya başarıyla yüklendi`);
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
-                }, 500);
+                }, 1000);
             } else {
-                console.error("Yükleme hatası:", xhr.statusText);
-                alert("Dosyalar yüklenirken bir hata oluştu.");
+                console.error("Yükleme hatası:", xhr.status, xhr.statusText);
+                alert(`Dosyalar yüklenirken hata oluştu (${xhr.status}): ${xhr.statusText}`);
                 resetUploadButton();
             }
         });
         
         xhr.addEventListener('error', function() {
-            console.error("Dosya yükleme hatası");
-            alert("Dosyalar yüklenirken bir hata oluştu.");
+            console.error("Network hatası - büyük dosyalar için sunucu ayarlarını kontrol edin");
+            alert("Yükleme sırasında network hatası oluştu. Dosyalar çok büyükse sunucu limitlerini kontrol edin.");
+            resetUploadButton();
+        });
+
+        // Timeout için daha uzun süre - büyük yüklemeler için
+        xhr.timeout = 600000; // 5 dakika
+        xhr.addEventListener('timeout', function() {
+            console.error("Timeout - yükleme çok uzun sürdü");
+            alert("Yükleme zaman aşımına uğradı. Dosyalar çok büyük olabilir.");
             resetUploadButton();
         });
 
