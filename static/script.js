@@ -264,7 +264,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Form submit ve uploadFile fonksiyonu
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         if (selectedFiles.length === 0) {
@@ -280,7 +279,7 @@ document.addEventListener("DOMContentLoaded", function () {
             warningContainer.style.color = '#333';
             warningContainer.style.fontSize = '14px';
             warningContainer.style.lineHeight = '1.4';
-            // Progress bar container'ın hemen önüne ekle
+            warningContainer.style.textAlign = 'center';
             uploadProgressBarContainer.parentNode.insertBefore(warningContainer, uploadProgressBarContainer);
         }
 
@@ -358,3 +357,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
