@@ -176,7 +176,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Form submit ve yükleme fonksiyonları artık paralel çalışacak şekilde yeniden düzenlendi
+    // Form submit ve uploadFile fonksiyonu aynı kalıyor
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -195,67 +195,55 @@ document.addEventListener("DOMContentLoaded", function () {
 
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
+
         totalBytesToUpload = selectedFiles.reduce((sum, file) => sum + file.size, 0);
         totalBytesUploaded = 0;
         
-        let uploadPromises = [];
+        selectedFiles.forEach(file => uploadFile(file));
+    });
+
+    function uploadFile(file) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
+
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        if (noteContent.trim() !== "") {
+            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
+            formData.append("file", noteFile);  
+        }
+
+        const xhr = new XMLHttpRequest();
+        let fileLastUploaded = 0;
+        xhr.upload.addEventListener("progress", function(event) {
+            if (event.lengthComputable) {
+                const diff = event.loaded - fileLastUploaded;
+                totalBytesUploaded += diff;
+                fileLastUploaded = event.loaded;
         
-        selectedFiles.forEach(file => {
-            uploadPromises.push(new Promise((resolve, reject) => {
-                const formData = new FormData();
-                formData.append("file", file);
-                formData.append("name", document.querySelector("input[name='name']").value);
-
-                const noteContent = document.querySelector("textarea[name='note']").value;
-                if (noteContent.trim() !== "") {
-                    const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-                    formData.append("note", noteFile);
-                }
+                const percentComplete = (totalBytesUploaded / totalBytesToUpload) * 100;
+                const loadedMB = (totalBytesUploaded / (1024 * 1024)).toFixed(2);
+                const totalMB = (totalBytesToUpload / (1024 * 1024)).toFixed(2);
         
-                const xhr = new XMLHttpRequest();
-                let fileLastUploaded = 0;
-
-                xhr.upload.addEventListener("progress", function(event) {
-                    if (event.lengthComputable) {
-                        const diff = event.loaded - fileLastUploaded;
-                        totalBytesUploaded += diff;
-                        fileLastUploaded = event.loaded;
-                
-                        const percentComplete = (totalBytesUploaded / totalBytesToUpload) * 100;
-                        const loadedMB = (totalBytesUploaded / (1024 * 1024)).toFixed(2);
-                        const totalMB = (totalBytesToUpload / (1024 * 1024)).toFixed(2);
-                
-                        uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                        uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
-                    }
-                });
-                
-                xhr.addEventListener('load', function() {
-                    uploadedFilesCount++;
-                    resolve();
-                });
-                
-                xhr.addEventListener('error', function() {
-                    console.error("Dosya yükleme hatası:", file.name);
-                    reject(new Error(`Yüklenemeyen dosya: ${file.name}`));
-                });
-
-                xhr.open('POST', mainForm.action);
-                xhr.send(formData);
-            }));
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
+            }
         });
-
-        Promise.all(uploadPromises)
-            .then(() => {
+        
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            if (uploadedFilesCount === totalFilesToUpload) {
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
                 }, 500);
-            })
-            .catch(error => {
-                alert(error.message);
-                submitBtn.textContent = 'Yükleme Hatası';
-                submitBtn.disabled = false;
-                uploadProgressBarContainer.style.display = 'none';
-            });
-    });
+            }
+        });
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
+        });
+
+        xhr.open('POST', mainForm.action);
+        xhr.send(formData);
+    }
 });
