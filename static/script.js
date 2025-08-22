@@ -264,6 +264,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Form submit ve uploadFile fonksiyonu
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         if (selectedFiles.length === 0) {
@@ -275,19 +276,17 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!warningContainer) {
             warningContainer = document.createElement('div');
             warningContainer.id = 'warningContainer';
-            warningContainer.style.display = 'flex';
-            warningContainer.style.justifyContent = 'space-between';
-            warningContainer.style.margin = '10px auto';
+            warningContainer.style.margin = '10px 0';
+            warningContainer.style.color = '#333';
             warningContainer.style.fontSize = '14px';
             warningContainer.style.lineHeight = '1.4';
-            warningContainer.style.width = '250px';
-            warningContainer.style.color = '#333';
+            // Progress bar container'ın hemen önüne ekle
             uploadProgressBarContainer.parentNode.insertBefore(warningContainer, uploadProgressBarContainer);
         }
-        
+
         warningContainer.innerHTML = `
-            <span>Bu işlem uzun sürebilir.</span>
-            <span>Site arka planda açık olacak şekilde telefonunuzu kullanmaya devam edebilirsiniz.</span>
+            <p>Bu işlem uzun sürebilir.</p>
+            <p>Site arka planda açık olacak şekilde telefonunuzu kullanmaya devam edebilirsiniz.</p>
         `;
 
         if (submitBtn) {
@@ -359,7 +358,3 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
-
-
-
-
