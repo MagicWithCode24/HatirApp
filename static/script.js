@@ -22,11 +22,13 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
+    // Mikrofon panelini aç/kapa
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
     });
 
+    // Kayda başla
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
@@ -57,7 +59,8 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             startBtn.disabled = true;
-            
+            stopBtn.disabled = false;
+
             recordStartTime = Date.now();
             recordTimer.textContent = "00:00";
             recordTimerInterval = setInterval(() => {
@@ -66,14 +69,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 const seconds = String(elapsed % 60).padStart(2, "0");
                 recordTimer.textContent = `${minutes}:${seconds}`;
             }, 1000);
-            
-            stopBtn.disabled = false;
+
         } catch (err) {
             console.error("Mikrofon erişim hatası:", err);
             alert("Mikrofon erişimi reddedildi veya bir hata oluştu.");
+            // Hata durumunda butonları düzgün ayarla
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
         }
     });
 
+    // Kaydı durdur
     stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             clearInterval(recordTimerInterval);
@@ -83,6 +89,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
+    // Dosya seçimi ve önizleme
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -191,6 +198,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Form gönderimi
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -203,7 +211,7 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%'; // Hemen başta sıfırla
+            uploadProgressBar.style.width = '0%';
             uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
 
@@ -216,6 +224,7 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedFiles.forEach(file => uploadFile(file));
     });
 
+    // Tek tek dosya yükleme
     function uploadFile(file) {
         const formData = new FormData();
         formData.append("file", file);
@@ -261,7 +270,3 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
-
-
-
-
