@@ -72,18 +72,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const uploadText = document.getElementById('uploadText');
 
     fileInput.addEventListener('change', () => {
-        const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1 GB
         const newFiles = Array.from(fileInput.files);
-    
-        for (const file of newFiles) {
-            if (file.size > MAX_FILE_SIZE) {
-                alert(`Dosya çok büyük: ${file.name}. Maksimum 1 GB.`);
-                return; // yüklemeyi durdur
-            }
-        }
-    
         selectedFiles = [...selectedFiles, ...newFiles];
-    
+
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
@@ -96,12 +87,12 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-    
+
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
         let allPreviews = [];
         let loadedCount = 0;
-    
+
         const updateFilePreviewProgress = () => {
             loadedCount++;
             const percentComplete = (loadedCount / selectedFiles.length) * 100;
@@ -113,7 +104,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, 500);
             }
         };
-
 
         selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
@@ -192,42 +182,53 @@ document.addEventListener("DOMContentLoaded", function () {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
-    
+
         if (submitBtn) {
             submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
         }
-    
+
+        uploadedFilesCount = 0;
+        totalFilesToUpload = selectedFiles.length;
+
+        selectedFiles.forEach(file => uploadFile(file));
+    });
+
+    function uploadFile(file) {
         const formData = new FormData();
-        selectedFiles.forEach(file => formData.append("file", file));
-    
-        // not ekle
+        formData.append("file", file);
+        formData.append("name", document.querySelector("input[name='name']").value);
+
         const noteContent = document.querySelector("textarea[name='note']").value;
         if (noteContent.trim() !== "") {
             const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
             formData.append("file", noteFile);  
         }
-    
-        formData.append("name", document.querySelector("input[name='name']").value);
-    
+
         const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener("progress", function(e) {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                uploadProgressBar.style.width = percentComplete.toFixed(0) + "%";
-                uploadProgressText.textContent = percentComplete.toFixed(0) + "%";
+        xhr.upload.addEventListener('progress', function(event) {
+            
+        });
+        xhr.addEventListener('load', function() {
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
+            if (uploadedFilesCount === totalFilesToUpload) {
+                setTimeout(() => { 
+                    window.location.href = mainForm.action; 
+                }, 500);
             }
         });
-        xhr.onload = function() {
-            window.location.href = mainForm.action;
-        };
-        xhr.onerror = function() {
-            alert("Dosyalar yüklenirken hata oluştu!");
-        };
-        xhr.open("POST", mainForm.action);
+        xhr.addEventListener('error', function() {
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
+        });
+
+        xhr.open('POST', mainForm.action);
         xhr.send(formData);
-    });
-
-
+    }
+});
 
