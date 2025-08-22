@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let totalBytesToUpload = 0;
     let totalBytesUploaded = 0;
 
+    const uploadStatusText = document.getElementById("uploadStatusText");
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -176,7 +177,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Form submit ve uploadFile fonksiyonu aynı kalıyor
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -189,6 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
+            uploadStatusText.style.display = 'block';
             uploadProgressBar.style.width = '0%'; 
             uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
@@ -247,3 +248,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
