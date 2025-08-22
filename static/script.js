@@ -109,13 +109,17 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'block';
             filePreviewProgressBar.style.width = '0%';
             filePreviewProgressText.textContent = '0%';
-            document.getElementById("extraInfo").style.display = "block";
+
+            const extraInfo = document.getElementById("extraInfo");
+            if (extraInfo) extraInfo.style.visibility = "visible";
         } 
         else {
             uploadText.style.display = "block";
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
-            document.getElementById("extraInfo").style.display = "none";
+
+            const extraInfo = document.getElementById("extraInfo");
+            if (extraInfo) extraInfo.style.visibility = "hidden";
         }
     
         const maxNormalPreview = 2;
@@ -262,6 +266,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
