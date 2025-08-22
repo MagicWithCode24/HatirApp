@@ -27,13 +27,11 @@ document.addEventListener("DOMContentLoaded", function () {
         recordPanel.classList.toggle("active");
 
         if (recordPanel.classList.contains("active")) {
-            // Görünür ve uygun şekilde etkinleştir
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "inline-block";
             startBtn.disabled = false;
-            stopBtn.disabled = true; // başta stop pasif
+            stopBtn.disabled = true;
         } else {
-            // Tekrar gizle
             startBtn.style.display = "none";
             stopBtn.style.display = "none";
             startBtn.disabled = true;
@@ -106,9 +104,12 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-    
-        // Önizleme için dosya sayısını 5 ile sınırla
-        const filesToPreview = selectedFiles.slice(0, 5); 
+
+        // Önizleme için dosya sayısını 4 ile sınırla
+        const maxNormalPreview = 2;
+        const maxOverlayPreview = 2; // Sadece 2 dosya üst üste binecek
+        const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
+
         let allPreviews = [];
         let loadedCount = 0;
     
@@ -147,15 +148,30 @@ document.addEventListener("DOMContentLoaded", function () {
     
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
-            validPreviews.forEach(el => previewContainer.appendChild(el));
-    
-            // Kalan dosya sayısını göster
-            const totalExtraCount = selectedFiles.length - filesToPreview.length;
+            validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
+            
+            const totalExtraCount = selectedFiles.length - maxNormalPreview;
             if (totalExtraCount > 0) {
-                const extra = document.createElement("div");
-                extra.className = "extra-count";
-                extra.textContent = `+${totalExtraCount} fazla dosya`;
-                previewContainer.appendChild(extra);
+                const overlayStackContainer = document.createElement("div");
+                overlayStackContainer.className = "overlay-stack-container";
+                const slideDistance = 3.75;
+                
+                validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
+                    el.classList.add("overlay");
+                    el.style.left = `${index * slideDistance}px`;
+                    el.style.zIndex = maxOverlayPreview - index;
+                    overlayStackContainer.appendChild(el);
+                });
+                
+                // Üst üste binen dosya sayısını gösteren etiket
+                if (totalExtraCount > 0) {
+                    const extra = document.createElement("div");
+                    extra.className = "extra-count";
+                    extra.textContent = `+${totalExtraCount}`;
+                    overlayStackContainer.appendChild(extra);
+                }
+                
+                previewContainer.appendChild(overlayStackContainer);
             }
         });
     });
