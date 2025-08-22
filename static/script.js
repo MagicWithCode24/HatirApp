@@ -103,34 +103,59 @@ document.addEventListener("DOMContentLoaded", function () {
         uploadText.style.display = selectedFiles.length > 0 ? "none" : "block";
         previewContainer.style.minHeight = selectedFiles.length > 0 ? "100px" : "auto";
     
-        selectedFiles.forEach(file => {
-            const previewDiv = document.createElement('div');
-            previewDiv.className = 'file-preview-item';
+        const maxNormalPreview = 2; // İlk iki foto normal
+        const maxOverlayPreview = 3; // Overlay stack maksimum
     
-            if (file.type.startsWith("image/")) {
+        const validImages = selectedFiles.filter(f => f.type.startsWith("image/"));
+    
+        // Normal preview
+        validImages.slice(0, maxNormalPreview).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.createElement("img");
+                img.src = e.target.result;
+                img.style.maxWidth = '100px';
+                img.style.maxHeight = '100px';
+                previewContainer.appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    
+        // Overlay stack
+        const overlayImages = validImages.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview);
+        if (overlayImages.length > 0) {
+            const overlayStackContainer = document.createElement("div");
+            overlayStackContainer.className = "overlay-stack-container";
+            const slideDistance = 3.75; // px kayma
+            overlayImages.forEach((file, index) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const img = document.createElement("img");
                     img.src = e.target.result;
+                    img.classList.add("overlay");
+                    img.style.position = 'absolute';
+                    img.style.left = `${index * slideDistance}px`;
+                    img.style.zIndex = maxOverlayPreview - index;
+                    img.style.opacity = '0.8';
                     img.style.maxWidth = '100px';
                     img.style.maxHeight = '100px';
-                    previewDiv.appendChild(img);
-    
-                    const successText = document.createElement('p');
-                    successText.textContent = "Başarıyla yüklendi";
-                    previewDiv.appendChild(successText);
+                    overlayStackContainer.appendChild(img);
                 };
                 reader.readAsDataURL(file);
-            } else {
-                // Video veya diğer dosyalar için sadece metin göster
-                const successText = document.createElement('p');
-                successText.textContent = "Başarıyla yüklendi";
-                previewDiv.appendChild(successText);
-            }
+            });
+            previewContainer.appendChild(overlayStackContainer);
+        }
     
-            previewContainer.appendChild(previewDiv);
-        });
+        // Genel başarı mesajı
+        let successMessage = document.getElementById("generalSuccessMessage");
+        if (!successMessage) {
+            successMessage = document.createElement('p');
+            successMessage.id = "generalSuccessMessage";
+            successMessage.textContent = "Başarıyla yüklendi";
+            previewContainer.appendChild(successMessage);
+        }
     });
+
 
 
     // Form submit ve uploadFile fonksiyonu aynı kalıyor
@@ -204,4 +229,5 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
