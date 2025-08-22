@@ -285,6 +285,14 @@ textarea.not-text {
     padding: 8px 0;
 }
 
+#uploadStatusText {
+    font-size: 14px;
+    color: #555;
+    margin-bottom: 5px;
+    text-align: center;
+    padding: 0 10px;
+}
+
 #filePreviewProgressBar,
 #uploadProgressBar {
     height: 6px;
@@ -301,3 +309,4 @@ textarea.not-text {
     font-weight: bold;
     color: #333;
 }
+
