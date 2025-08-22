@@ -103,7 +103,11 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
-        selectedFiles.forEach(file => {
+        // Sadece ilk 3 dosyanın önizlemesini yükle
+        const maxPreviewFiles = 3;
+        const filesToPreview = selectedFiles.slice(0, maxPreviewFiles);
+        
+        filesToPreview.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
                     const reader = new FileReader();
@@ -147,27 +151,43 @@ document.addEventListener("DOMContentLoaded", function () {
                 allPreviews.push(Promise.resolve(null));
             }
         });
+        
+        // Kalan dosyalar için progress'i otomatik olarak tamamla
+        for (let i = filesToPreview.length; i < selectedFiles.length; i++) {
+            updateFilePreviewProgress();
+        }
 
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
+            
+            // Sadece normal preview'ları göster (max 2 adet)
             validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
-            const totalExtraCount = validPreviews.length - maxNormalPreview;
+            
+            // Toplam dosya sayısına göre extra count'u hesapla
+            const totalFilesCount = selectedFiles.length;
+            const shownPreviewsCount = Math.min(validPreviews.length, maxNormalPreview);
+            const totalExtraCount = totalFilesCount - shownPreviewsCount;
+            
             if (totalExtraCount > 0) {
                 const overlayStackContainer = document.createElement("div");
                 overlayStackContainer.className = "overlay-stack-container";
                 const slideDistance = 3.75;
-                validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
+                
+                // Kalan preview'ları overlay olarak göster (varsa)
+                const overlayPreviews = validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview);
+                overlayPreviews.forEach((el, index) => {
                     el.classList.add("overlay");
                     el.style.left = `${index * slideDistance}px`;
                     el.style.zIndex = maxOverlayPreview - index;
                     overlayStackContainer.appendChild(el);
                 });
-                if (totalExtraCount > 0) {
-                    const extra = document.createElement("div");
-                    extra.className = "extra-count";
-                    extra.textContent = `+${totalExtraCount}`;
-                    overlayStackContainer.appendChild(extra);
-                }
+                
+                // Extra count'u göster
+                const extra = document.createElement("div");
+                extra.className = "extra-count";
+                extra.textContent = `+${totalExtraCount}`;
+                overlayStackContainer.appendChild(extra);
+                
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
