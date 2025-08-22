@@ -1,8 +1,9 @@
 document.addEventListener("DOMContentLoaded", function () {
-
     let mediaRecorder;
     let audioChunks = [];
     let selectedFiles = [];
+    let uploadedFilesCount = 0;
+    let totalFilesToUpload = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -104,11 +105,7 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         };
 
-        // Sadece ilk 4 dosyanın önizlemesini yükle
-        const maxPreviewFiles = 4;
-        const filesToPreview = selectedFiles.slice(0, maxPreviewFiles);
-        
-        filesToPreview.forEach(file => {
+        selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
                     const reader = new FileReader();
@@ -152,49 +149,28 @@ document.addEventListener("DOMContentLoaded", function () {
                 allPreviews.push(Promise.resolve(null));
             }
         });
-        
-        // Kalan dosyalar için progress'i otomatik olarak tamamla
-        for (let i = filesToPreview.length; i < selectedFiles.length; i++) {
-            updateFilePreviewProgress();
-        }
 
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
-            
-            // Sadece normal preview'ları göster (max 2 adet)
             validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
-            
-            // Toplam dosya sayısına göre extra count'u hesapla
-            const totalFilesCount = selectedFiles.length;
-            const shownPreviewsCount = Math.min(validPreviews.length, maxNormalPreview);
-            const totalExtraCount = totalFilesCount - shownPreviewsCount;
-            
+            const totalExtraCount = validPreviews.length - maxNormalPreview;
             if (totalExtraCount > 0) {
                 const overlayStackContainer = document.createElement("div");
                 overlayStackContainer.className = "overlay-stack-container";
                 const slideDistance = 3.75;
-                
-                // Kalan preview'ları overlay olarak göster (varsa)
-                const overlayPreviews = validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview);
-                overlayPreviews.forEach((el, index) => {
+                validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
                     el.classList.add("overlay");
                     el.style.left = `${index * slideDistance}px`;
                     el.style.zIndex = maxOverlayPreview - index;
                     overlayStackContainer.appendChild(el);
                 });
-                
-                // Extra count'u göster
-                const extra = document.createElement("div");
-                extra.className = "extra-count";
-                extra.textContent = `+${totalExtraCount}`;
-                overlayStackContainer.appendChild(extra);
-                
+                if (totalExtraCount > 0) {
+                    const extra = document.createElement("div");
+                    extra.className = "extra-count";
+                    extra.textContent = `+${totalExtraCount}`;
+                    overlayStackContainer.appendChild(extra);
+                }
                 previewContainer.appendChild(overlayStackContainer);
-            }
-            
-            // Android sınırı uyarısı
-            if (selectedFiles.length >= 100) {
-                alert("📱 Daha fazla foto eklemek için tekrar dosya seçme bölümüne tıklayın");
             }
         });
     });
@@ -207,90 +183,52 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
 
-        // Dosya sayısı ve boyut bilgisi göster
-        const totalSize = selectedFiles.reduce((sum, file) => sum + file.size, 0);
-        const totalSizeMB = (totalSize / (1024 * 1024)).toFixed(2);
-        console.log(`${selectedFiles.length} dosya yükleniyor, toplam boyut: ${totalSizeMB}MB`);
-
         if (submitBtn) {
-            submitBtn.textContent = `Yükleniyor... (${selectedFiles.length} dosya)`;
+            submitBtn.textContent = 'Yükleniyor...';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%';
-            uploadProgressText.textContent = '0%';
         }
 
-        // Tek büyük FormData oluştur - sınır yok!
+        uploadedFilesCount = 0;
+        totalFilesToUpload = selectedFiles.length;
+
+        selectedFiles.forEach(file => uploadFile(file));
+    });
+
+    function uploadFile(file) {
         const formData = new FormData();
-        
-        // İsim verisini ekle
+        formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
-        
-        // Not içeriğini kontrol et ve ekle
+
         const noteContent = document.querySelector("textarea[name='note']").value;
         if (noteContent.trim() !== "") {
             const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("files", noteFile);
+            formData.append("file", noteFile);  
         }
-        
-        // TÜM dosyaları tek seferde ekle - 1000 dosya olsa bile!
-        selectedFiles.forEach((file, index) => {
-            formData.append("files", file);
-        });
 
-        // Tek dev XMLHttpRequest ile gönder
         const xhr = new XMLHttpRequest();
-        
-        // Upload progress - gerçek zamanlı
         xhr.upload.addEventListener('progress', function(event) {
-            if (event.lengthComputable) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                const loadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
-                const totalMB = (event.total / (1024 * 1024)).toFixed(2);
-                
-                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                uploadProgressText.textContent = `${percentComplete.toFixed(0)}% (${loadedMB}/${totalMB}MB)`;
-            }
+            
         });
-        
         xhr.addEventListener('load', function() {
-            if (xhr.status === 200) {
-                uploadProgressBar.style.width = '100%';
-                uploadProgressText.textContent = `100% - Tamamlandı! (${totalSizeMB}MB)`;
-                console.log(`✅ ${selectedFiles.length} dosya başarıyla yüklendi`);
+            uploadedFilesCount++;
+            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
+            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
+            
+            if (uploadedFilesCount === totalFilesToUpload) {
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
-                }, 1000);
-            } else {
-                console.error("Yükleme hatası:", xhr.status, xhr.statusText);
-                alert(`Dosyalar yüklenirken hata oluştu (${xhr.status}): ${xhr.statusText}`);
-                resetUploadButton();
+                }, 500);
             }
         });
-        
         xhr.addEventListener('error', function() {
-            console.error("Network hatası - büyük dosyalar için sunucu ayarlarını kontrol edin");
-            alert("Yükleme sırasında network hatası oluştu. Dosyalar çok büyükse sunucu limitlerini kontrol edin.");
-            resetUploadButton();
-        });
-
-        // Timeout için daha uzun süre - büyük yüklemeler için
-        xhr.timeout = 300000; // 5 dakika
-        xhr.addEventListener('timeout', function() {
-            console.error("Timeout - yükleme çok uzun sürdü");
-            alert("Yükleme zaman aşımına uğradı. Dosyalar çok büyük olabilir.");
-            resetUploadButton();
+            console.error("Dosya yükleme hatası:", file.name);
+            alert(`Yüklenemeyen dosya: ${file.name}`);
         });
 
         xhr.open('POST', mainForm.action);
         xhr.send(formData);
-    });
-
-    function resetUploadButton() {
-        if (submitBtn) {
-            submitBtn.textContent = 'Yükle';
-            submitBtn.disabled = false;
-            uploadProgressBarContainer.style.display = 'none';
-        }
     }
 });
+
