@@ -131,11 +131,16 @@ document.addEventListener("DOMContentLoaded", function () {
             alert(`Aşağıdaki dosyalar zaten seçilmiş, tekrar eklenmedi:\n${duplicateNames}`);
         }
         
-        // Sadece benzersiz dosyaları ekle
-        selectedFiles = [...selectedFiles, ...uniqueFiles];
-        
         // File input'u temizle (aynı dosyanın tekrar seçilebilmesi için change event'inin çalışması)
         fileInput.value = '';
+        
+        // Eğer yeni dosya yoksa önizlemeleri tekrar yükleme
+        if (uniqueFiles.length === 0) {
+            return;
+        }
+        
+        // Sadece benzersiz dosyaları ekle
+        selectedFiles = [...selectedFiles, ...uniqueFiles];
         
         previewContainer.innerHTML = '';
 
