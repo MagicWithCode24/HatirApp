@@ -100,10 +100,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-
-        if (newFiles.length >= 100) {
-            alert("Daha fazla fotoğraf eklemek isterseniz, ekleme yerine bir daha basın ve eklemeye kaldığınız yerden devam edin.");
-        }
         
         selectedFiles = [...selectedFiles, ...newFiles];
     
@@ -187,6 +183,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 
                 previewContainer.appendChild(overlayStackContainer);
+
+                if (newFiles.length >= 100) {
+                    alert("Daha fazla fotoğraf eklemek isterseniz, ekleme yerine bir daha basın ve eklemeye kaldığınız yerden devam edin.");
+                }
             }
         });
     });
@@ -265,5 +265,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
