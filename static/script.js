@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    // Dosya yükleme ve önizleme kısmı aynı kalıyor
+    // Dosya yükleme ve önizleme kısmı
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -112,24 +112,27 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'none';
         }
     
+        // Önizleme için dosya sayısını 4 ile sınırla
         const maxNormalPreview = 2;
-        const maxOverlayPreview = 3;
+        const maxOverlayPreview = 2;
+        const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
+    
         let allPreviews = [];
         let loadedCount = 0;
     
         const updateFilePreviewProgress = () => {
             loadedCount++;
-            const percentComplete = (loadedCount / selectedFiles.length) * 100;
+            const percentComplete = (loadedCount / filesToPreview.length) * 100;
             filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
             filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (loadedCount === selectedFiles.length) {
+            if (loadedCount === filesToPreview.length) {
                 setTimeout(() => {
                     filePreviewProgressBarContainer.style.display = 'none';
                 }, 500);
             }
         };
     
-        selectedFiles.forEach(file => {
+        filesToPreview.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
                     const reader = new FileReader();
@@ -142,7 +145,6 @@ document.addEventListener("DOMContentLoaded", function () {
                     reader.readAsDataURL(file);
                 }));
             } else {
-                // Video preview logic is removed. We'll create a simple placeholder instead.
                 updateFilePreviewProgress();
                 const placeholder = document.createElement('div');
                 placeholder.textContent = file.type.startsWith("video/") ? 'Video dosyası' : 'Diğer dosya';
@@ -154,29 +156,34 @@ document.addEventListener("DOMContentLoaded", function () {
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
             validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
-            const totalExtraCount = validPreviews.length - maxNormalPreview;
+            
+            const totalExtraCount = selectedFiles.length - maxNormalPreview;
             if (totalExtraCount > 0) {
                 const overlayStackContainer = document.createElement("div");
                 overlayStackContainer.className = "overlay-stack-container";
                 const slideDistance = 3.75;
+                
                 validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
                     el.classList.add("overlay");
                     el.style.left = `${index * slideDistance}px`;
                     el.style.zIndex = maxOverlayPreview - index;
                     overlayStackContainer.appendChild(el);
                 });
+                
+                // Üst üste binen dosya sayısını gösteren etiket
                 if (totalExtraCount > 0) {
                     const extra = document.createElement("div");
                     extra.className = "extra-count";
                     extra.textContent = `+${totalExtraCount}`;
                     overlayStackContainer.appendChild(extra);
                 }
+                
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
     });
 
-    // Form submit ve uploadFile fonksiyonu aynı kalıyor
+    // Form submit ve uploadFile fonksiyonu
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
