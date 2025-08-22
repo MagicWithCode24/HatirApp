@@ -15,7 +15,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const mainForm = document.getElementById("mainForm");
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
-    const uploadStatus = document.createElement('p'); // Genel "Başarıyla yüklendi" mesajı
+    const uploadStatus = document.createElement('p'); 
     uploadStatus.style.marginTop = "10px";
     uploadStatus.style.color = "green";
     previewContainer.appendChild(uploadStatus);
@@ -81,57 +81,59 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    // File seçme
+    const fileInput = document.getElementById('real-file');
+
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
 
         previewContainer.innerHTML = '';
-        if (selectedFiles.length > 0) {
-            uploadText.style.display = "none";
-        } else {
-            uploadText.style.display = "block";
-        }
+        if (selectedFiles.length > 0) uploadText.style.display = "none";
+        else uploadText.style.display = "block";
 
-        // Önizleme
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
-        let loadedCount = 0;
-        const updatePreviewProgress = () => { loadedCount++; };
-
-        selectedFiles.forEach(file => {
+        selectedFiles.forEach((file, i) => {
             if (file.type.startsWith("image/")) {
                 const reader = new FileReader();
                 reader.onload = function (e) {
                     const img = document.createElement("img");
                     img.src = e.target.result;
-                    if (previewContainer.childElementCount < maxNormalPreview) {
-                        previewContainer.appendChild(img);
-                    } else {
+                    img.style.width = "80px";
+                    img.style.height = "100px";
+                    img.style.objectFit = "cover";
+                    img.style.marginRight = "5px";
+
+                    if (i < maxNormalPreview) previewContainer.appendChild(img);
+                    else {
                         let overlayContainer = previewContainer.querySelector(".overlay-stack-container");
                         if (!overlayContainer) {
                             overlayContainer = document.createElement("div");
                             overlayContainer.className = "overlay-stack-container";
+                            overlayContainer.style.position = "relative";
                             previewContainer.appendChild(overlayContainer);
                         }
                         img.classList.add("overlay");
+                        img.style.position = "absolute";
                         img.style.left = `${(overlayContainer.childElementCount) * 3.75}px`;
                         img.style.zIndex = maxOverlayPreview - overlayContainer.childElementCount;
                         overlayContainer.appendChild(img);
                     }
-                    updatePreviewProgress();
                 };
                 reader.readAsDataURL(file);
             } else {
-                updatePreviewProgress(); // video veya diğer dosyalar için placeholder
+                const placeholder = document.createElement('div');
+                placeholder.textContent = file.type.startsWith("video/") ? 'Video dosyası' : 'Diğer dosya';
+                placeholder.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;margin-right:10px;';
+                previewContainer.appendChild(placeholder);
             }
         });
     });
 
-    // Upload kısmı paralel ve throttling
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         if (selectedFiles.length === 0) return alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
+
         submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
         submitBtn.disabled = true;
 
@@ -141,7 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
         totalBytesUploaded = 0;
         uploadStatus.textContent = '';
 
-        const MAX_PARALLEL_UPLOADS = 4; // Aynı anda max 4 dosya yükle
+        const MAX_PARALLEL_UPLOADS = 2; // t3.micro için hafif
         let queue = [...selectedFiles];
 
         const startNextUpload = () => {
@@ -150,7 +152,6 @@ document.addEventListener("DOMContentLoaded", function () {
             uploadFile(file).finally(() => startNextUpload());
         };
 
-        // Başlat
         for (let i = 0; i < MAX_PARALLEL_UPLOADS; i++) startNextUpload();
     });
 
