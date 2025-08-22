@@ -109,15 +109,17 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'block';
             filePreviewProgressBar.style.width = '0%';
             filePreviewProgressText.textContent = '0%';
-        } else {
+            document.getElementById("extraInfo").style.display = "block";
+        } 
+        else {
             uploadText.style.display = "block";
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
+            document.getElementById("extraInfo").style.display = "none";
         }
     
-        // Önizleme için dosya sayısını 4 ile sınırla
         const maxNormalPreview = 2;
-        const maxOverlayPreview = 2;
+        const maxOverlayPreview = 3;
         const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
     
         let allPreviews = [];
@@ -260,3 +262,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
