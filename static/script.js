@@ -275,16 +275,18 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!warningContainer) {
             warningContainer = document.createElement('div');
             warningContainer.id = 'warningContainer';
+            warningContainer.style.display = 'flex';
+            warningContainer.style.justifyContent = 'space-between'; // iki yana yasla
             warningContainer.style.margin = '10px 0';
-            warningContainer.style.color = '#333';
             warningContainer.style.fontSize = '14px';
             warningContainer.style.lineHeight = '1.4';
-            // Progress bar container'ın hemen önüne ekle
-            uploadProgressBarContainer.parentNode.insertBefore(warningContainer, uploadProgressBarContainer);
+            warningContainer.style.color = '#333';
+            submitBtn.parentNode.insertBefore(warningContainer, submitBtn.nextSibling);
         }
+        
         warningContainer.innerHTML = `
-            <p>Bu işlem uzun sürebilir.</p>
-            <p>Site arka planda açık olacak şekilde telefonunuzu kullanmaya devam edebilirsiniz.</p>
+            <span>Bu işlem uzun sürebilir.</span>
+            <span>Site arka planda açık olacak şekilde telefonunuzu kullanmaya devam edebilirsiniz.</span>
         `;
 
         if (submitBtn) {
@@ -356,5 +358,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
