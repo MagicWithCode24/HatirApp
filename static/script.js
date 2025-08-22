@@ -6,9 +6,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let totalFilesToUpload = 0;
     let totalBytesToUpload = 0;
     let totalBytesUploaded = 0;
-    let recordTimerInterval;
-    let recordStartTime;
-    const recordTimer = document.getElementById("recordTimer");
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -22,13 +19,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // Mikrofon panelini aç/kapa
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
     });
 
-    // Kayda başla
     startBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         try {
@@ -60,36 +55,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
             startBtn.disabled = true;
             stopBtn.disabled = false;
-
-            recordStartTime = Date.now();
-            recordTimer.textContent = "00:00";
-            recordTimerInterval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
-                const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
-                const seconds = String(elapsed % 60).padStart(2, "0");
-                recordTimer.textContent = `${minutes}:${seconds}`;
-            }, 1000);
-
         } catch (err) {
             console.error("Mikrofon erişim hatası:", err);
             alert("Mikrofon erişimi reddedildi veya bir hata oluştu.");
-            // Hata durumunda butonları düzgün ayarla
-            startBtn.disabled = false;
-            stopBtn.disabled = true;
         }
     });
 
-    // Kaydı durdur
     stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
-            clearInterval(recordTimerInterval);
             mediaRecorder.stop();
         }
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
 
-    // Dosya seçimi ve önizleme
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -198,7 +177,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // Form gönderimi
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -211,7 +189,7 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%';
+            uploadProgressBar.style.width = '0%'; // Hemen başta sıfırla
             uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
 
@@ -224,7 +202,6 @@ document.addEventListener("DOMContentLoaded", function () {
         selectedFiles.forEach(file => uploadFile(file));
     });
 
-    // Tek tek dosya yükleme
     function uploadFile(file) {
         const formData = new FormData();
         formData.append("file", file);
