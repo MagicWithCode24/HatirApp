@@ -29,15 +29,12 @@ document.addEventListener("DOMContentLoaded", function () {
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
-
         if (recordPanel.classList.contains("active")) {
-            // Görünür ve uygun şekilde etkinleştir
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "inline-block";
             startBtn.disabled = false;
             stopBtn.disabled = true; // başta stop pasif
         } else {
-            // Tekrar gizle
             startBtn.style.display = "none";
             stopBtn.style.display = "none";
             startBtn.disabled = true;
@@ -60,20 +57,15 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder.addEventListener("stop", () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
                 const audioUrl = URL.createObjectURL(audioBlob);
-
                 const previewArea = document.getElementById("audioPreview");
                 previewArea.innerHTML = "";
                 const audio = document.createElement("audio");
-                
-                // Buradaki "controls" özelliğini kaldırdım
-                // audio.controls = true; 
-                
+                // audio.controls = true; // kontrol kaldırıldı
                 audio.src = audioUrl;
                 const label = document.createElement("p");
                 label.textContent = "Kaydınız:";
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
-
                 selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
             });
 
@@ -101,8 +93,8 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
-    
         previewContainer.innerHTML = '';
+
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
             previewContainer.style.minHeight = "100px";
@@ -114,15 +106,14 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-    
-        // Önizleme için dosya sayısını 4 ile sınırla
+
+        // Önizleme için dosya sayısını sınırla
         const maxNormalPreview = 2;
         const maxOverlayPreview = 2;
         const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
-    
         let allPreviews = [];
         let loadedCount = 0;
-    
+
         const updateFilePreviewProgress = () => {
             loadedCount++;
             const percentComplete = (loadedCount / filesToPreview.length) * 100;
@@ -134,7 +125,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, 500);
             }
         };
-    
+
         filesToPreview.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
@@ -155,32 +146,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 allPreviews.push(Promise.resolve(placeholder));
             }
         });
-    
+
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
             validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
-            
+
             const totalExtraCount = selectedFiles.length - maxNormalPreview;
             if (totalExtraCount > 0) {
                 const overlayStackContainer = document.createElement("div");
                 overlayStackContainer.className = "overlay-stack-container";
                 const slideDistance = 3.75;
-                
+
                 validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
                     el.classList.add("overlay");
                     el.style.left = `${index * slideDistance}px`;
                     el.style.zIndex = maxOverlayPreview - index;
                     overlayStackContainer.appendChild(el);
                 });
-                
-                // Üst üste binen dosya sayısını gösteren etiket
+
                 if (totalExtraCount > 0) {
                     const extra = document.createElement("div");
                     extra.className = "extra-count";
                     extra.textContent = `+${totalExtraCount}`;
                     overlayStackContainer.appendChild(extra);
                 }
-                
+
                 previewContainer.appendChild(overlayStackContainer);
             }
         });
@@ -189,7 +179,6 @@ document.addEventListener("DOMContentLoaded", function () {
     // Form submit ve uploadFile fonksiyonu
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        
         if (selectedFiles.length === 0) {
             alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
@@ -199,16 +188,15 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%'; 
+            uploadProgressBar.style.width = '0%';
             uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
 
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
-
         totalBytesToUpload = selectedFiles.reduce((sum, file) => sum + file.size, 0);
         totalBytesUploaded = 0;
-        
+
         selectedFiles.forEach(file => uploadFile(file));
     });
 
@@ -220,34 +208,35 @@ document.addEventListener("DOMContentLoaded", function () {
         const noteContent = document.querySelector("textarea[name='note']").value;
         if (noteContent.trim() !== "") {
             const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("file", noteFile);  
+            formData.append("file", noteFile);
         }
 
         const xhr = new XMLHttpRequest();
         let fileLastUploaded = 0;
+        xhr.timeout = 3600000;
+
         xhr.upload.addEventListener("progress", function(event) {
             if (event.lengthComputable) {
                 const diff = event.loaded - fileLastUploaded;
                 totalBytesUploaded += diff;
                 fileLastUploaded = event.loaded;
-        
                 const percentComplete = (totalBytesUploaded / totalBytesToUpload) * 100;
                 const loadedMB = (totalBytesUploaded / (1024 * 1024)).toFixed(2);
                 const totalMB = (totalBytesToUpload / (1024 * 1024)).toFixed(2);
-        
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
                 uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
             }
         });
-        
+
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
             if (uploadedFilesCount === totalFilesToUpload) {
-                setTimeout(() => { 
-                    window.location.href = mainForm.action; 
+                setTimeout(() => {
+                    window.location.href = mainForm.action;
                 }, 500);
             }
         });
+
         xhr.addEventListener('error', function() {
             console.error("Dosya yükleme hatası:", file.name);
             alert(`Yüklenemeyen dosya: ${file.name}`);
