@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
     let totalFilesToUpload = 0;
     let totalBytesToUpload = 0;
     let totalBytesUploaded = 0;
+
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -19,9 +20,29 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
+    // Başlangıçta butonları görünmez ve pasif yap
+    startBtn.style.display = "none";
+    stopBtn.style.display = "none";
+    startBtn.disabled = true;
+    stopBtn.disabled = true;
+
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
+
+        if (recordPanel.classList.contains("active")) {
+            // Görünür ve uygun şekilde etkinleştir
+            startBtn.style.display = "inline-block";
+            stopBtn.style.display = "inline-block";
+            startBtn.disabled = false;
+            stopBtn.disabled = true; // başta stop pasif
+        } else {
+            // Tekrar gizle
+            startBtn.style.display = "none";
+            stopBtn.style.display = "none";
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+        }
     });
 
     startBtn.addEventListener("click", async (e) => {
@@ -69,6 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
+    // Dosya yükleme ve önizleme kısmı aynı kalıyor
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -177,6 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Form submit ve uploadFile fonksiyonu aynı kalıyor
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
@@ -189,7 +212,7 @@ document.addEventListener("DOMContentLoaded", function () {
             submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
-            uploadProgressBar.style.width = '0%'; // Hemen başta sıfırla
+            uploadProgressBar.style.width = '0%'; 
             uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
 
