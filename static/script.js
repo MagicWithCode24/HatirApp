@@ -184,9 +184,11 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (submitBtn) {
-            submitBtn.textContent = 'Yükleniyor...';
+            submitBtn.textContent = 'Yükleniyor... (' + selectedFiles.length + ' belge)';
             submitBtn.disabled = true;
             uploadProgressBarContainer.style.display = 'block';
+            uploadProgressBar.style.width = '0%'; // Hemen başta sıfırla
+            uploadProgressText.textContent = '0% (0 MB / 0 MB)';
         }
 
         uploadedFilesCount = 0;
@@ -208,14 +210,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const xhr = new XMLHttpRequest();
         xhr.upload.addEventListener('progress', function(event) {
-            
+            if (event.lengthComputable) {
+                const percentComplete = (event.loaded / event.total) * 100;
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+        
+                const loadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
+                const totalMB = (event.total / (1024 * 1024)).toFixed(2);
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
+            }
         });
+        
         xhr.addEventListener('load', function() {
             uploadedFilesCount++;
-            const percentComplete = (uploadedFilesCount / totalFilesToUpload) * 100;
-            uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            uploadProgressText.textContent = percentComplete.toFixed(0) + '%';
-            
             if (uploadedFilesCount === totalFilesToUpload) {
                 setTimeout(() => { 
                     window.location.href = mainForm.action; 
@@ -231,4 +237,5 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
