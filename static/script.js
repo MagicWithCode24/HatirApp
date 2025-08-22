@@ -4,6 +4,8 @@ document.addEventListener("DOMContentLoaded", function () {
     let selectedFiles = [];
     let uploadedFilesCount = 0;
     let totalFilesToUpload = 0;
+    let totalBytesToUpload = 0;
+    let totalBytesUploaded = 0;
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -194,6 +196,9 @@ document.addEventListener("DOMContentLoaded", function () {
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
 
+        totalBytesToUpload = selectedFiles.reduce((sum, file) => sum + file.size, 0);
+        totalBytesUploaded = 0;
+        
         selectedFiles.forEach(file => uploadFile(file));
     });
 
@@ -209,13 +214,18 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const xhr = new XMLHttpRequest();
-        xhr.upload.addEventListener('progress', function(event) {
+        let fileLastUploaded = 0;
+        xhr.upload.addEventListener("progress", function(event) {
             if (event.lengthComputable) {
-                const percentComplete = (event.loaded / event.total) * 100;
-                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
+                const diff = event.loaded - fileLastUploaded;
+                totalBytesUploaded += diff;
+                fileLastUploaded = event.loaded;
         
-                const loadedMB = (event.loaded / (1024 * 1024)).toFixed(2);
-                const totalMB = (event.total / (1024 * 1024)).toFixed(2);
+                const percentComplete = (totalBytesUploaded / totalBytesToUpload) * 100;
+                const loadedMB = (totalBytesUploaded / (1024 * 1024)).toFixed(2);
+                const totalMB = (totalBytesToUpload / (1024 * 1024)).toFixed(2);
+        
+                uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
                 uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
             }
         });
@@ -237,5 +247,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
