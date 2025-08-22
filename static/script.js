@@ -64,7 +64,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 const previewArea = document.getElementById("audioPreview");
                 previewArea.innerHTML = "";
                 const audio = document.createElement("audio");
-                audio.controls = true;
+                
+                // Buradaki "controls" özelliğini kaldırdım
+                // audio.controls = true; 
+                
                 audio.src = audioUrl;
                 const label = document.createElement("p");
                 label.textContent = "Kaydınız:";
