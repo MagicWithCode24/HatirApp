@@ -13,6 +13,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const stopBtn = document.getElementById("stopBtn");
     const submitBtn = document.getElementById("submitBtn");
     const mainForm = document.getElementById("mainForm");
+    const uploadTipText = document.getElementById("uploadTipText");
     const uploadProgressBarContainer = document.getElementById("uploadProgressBarContainer");
     const uploadProgressBar = document.getElementById("uploadProgressBar");
     const uploadProgressText = document.getElementById("uploadProgressText");
@@ -65,8 +66,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewArea.innerHTML = "";
                 const audio = document.createElement("audio");
                 
-                // Buradaki "controls" özelliğini kaldırdım
-                // audio.controls = true; 
                 
                 audio.src = audioUrl;
                 const label = document.createElement("p");
@@ -185,6 +184,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 previewContainer.appendChild(overlayStackContainer);
 
             }
+
+            if (newFiles.length >= 100) {
+                uploadTipText.style.display = 'block';
+            } else {
+                uploadTipText.style.display = 'none';
+            }
         });
     });
 
@@ -262,6 +267,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
