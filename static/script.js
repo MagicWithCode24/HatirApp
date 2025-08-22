@@ -119,7 +119,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     
         const maxNormalPreview = 2;
-        const maxOverlayPreview = 2;
+        const maxOverlayPreview = 3;
         const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
     
         let allPreviews = [];
@@ -262,5 +262,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
