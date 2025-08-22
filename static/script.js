@@ -6,6 +6,9 @@ document.addEventListener("DOMContentLoaded", function () {
     let totalFilesToUpload = 0;
     let totalBytesToUpload = 0;
     let totalBytesUploaded = 0;
+    let recordTimerInterval;
+    let recordStartTime;
+    const recordTimer = document.getElementById("recordTimer");
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
     const startBtn = document.getElementById("startBtn");
@@ -54,6 +57,16 @@ document.addEventListener("DOMContentLoaded", function () {
             });
 
             startBtn.disabled = true;
+            
+            recordStartTime = Date.now();
+            recordTimer.textContent = "00:00";
+            recordTimerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - recordStartTime) / 1000);
+                const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
+                const seconds = String(elapsed % 60).padStart(2, "0");
+                recordTimer.textContent = `${minutes}:${seconds}`;
+            }, 1000);
+            
             stopBtn.disabled = false;
         } catch (err) {
             console.error("Mikrofon erişim hatası:", err);
@@ -63,6 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state === "recording") {
+            clearInterval(recordTimerInterval);
             mediaRecorder.stop();
         }
         startBtn.disabled = false;
@@ -247,6 +261,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
