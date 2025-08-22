@@ -225,6 +225,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const xhr = new XMLHttpRequest();
         let fileLastUploaded = 0;
+
+        xhr.timeout = 3600000;
+        
         xhr.upload.addEventListener("progress", function(event) {
             if (event.lengthComputable) {
                 const diff = event.loaded - fileLastUploaded;
@@ -257,3 +260,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
