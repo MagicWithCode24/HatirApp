@@ -26,6 +26,32 @@ document.addEventListener("DOMContentLoaded", function () {
     startBtn.disabled = true;
     stopBtn.disabled = true;
 
+    // Dosya benzersizliği kontrol fonksiyonu
+    function isDuplicateFile(newFile, existingFiles) {
+        return existingFiles.some(existingFile => {
+            return existingFile.name === newFile.name && 
+                   existingFile.size === newFile.size && 
+                   existingFile.lastModified === newFile.lastModified &&
+                   existingFile.type === newFile.type;
+        });
+    }
+
+    // Tekrar eden dosyaları filtrele
+    function filterDuplicateFiles(newFiles, existingFiles) {
+        const uniqueFiles = [];
+        const duplicateFiles = [];
+
+        newFiles.forEach(file => {
+            if (!isDuplicateFile(file, existingFiles) && !isDuplicateFile(file, uniqueFiles)) {
+                uniqueFiles.push(file);
+            } else {
+                duplicateFiles.push(file);
+            }
+        });
+
+        return { uniqueFiles, duplicateFiles };
+    }
+
     micBtn.addEventListener("click", (e) => {
         e.preventDefault();
         recordPanel.classList.toggle("active");
@@ -66,7 +92,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 label.textContent = "Kaydınız:";
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
-                selectedFiles.push(new File([audioBlob], "recording.wav", { type: 'audio/wav' }));
+                
+                // Ses kaydı için benzersiz isim oluştur (timestamp ile)
+                const timestamp = Date.now();
+                selectedFiles.push(new File([audioBlob], `recording_${timestamp}.wav`, { type: 'audio/wav' }));
             });
 
             startBtn.disabled = true;
@@ -92,7 +121,22 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
-        selectedFiles = [...selectedFiles, ...newFiles];
+        
+        // Tekrar eden dosyaları filtrele
+        const { uniqueFiles, duplicateFiles } = filterDuplicateFiles(newFiles, selectedFiles);
+        
+        // Eğer tekrar eden dosyalar varsa kullanıcıyı bilgilendir
+        if (duplicateFiles.length > 0) {
+            const duplicateNames = duplicateFiles.map(file => file.name).join(', ');
+            alert(`Aşağıdaki dosyalar zaten seçilmiş, tekrar eklenmedi:\n${duplicateNames}`);
+        }
+        
+        // Sadece benzersiz dosyaları ekle
+        selectedFiles = [...selectedFiles, ...uniqueFiles];
+        
+        // File input'u temizle (aynı dosyanın tekrar seçilebilmesi için change event'inin çalışması)
+        fileInput.value = '';
+        
         previewContainer.innerHTML = '';
 
         if (selectedFiles.length > 0) {
@@ -246,4 +290,3 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
-
