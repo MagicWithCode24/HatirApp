@@ -98,106 +98,40 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
-
+    
         previewContainer.innerHTML = '';
-        if (selectedFiles.length > 0) {
-            uploadText.style.display = "none";
-            previewContainer.style.minHeight = "100px";
-            filePreviewProgressBarContainer.style.display = 'block';
-            filePreviewProgressBar.style.width = '0%';
-            filePreviewProgressText.textContent = '0%';
-        } else {
-            uploadText.style.display = "block";
-            previewContainer.style.minHeight = "auto";
-            filePreviewProgressBarContainer.style.display = 'none';
-        }
-
-        const maxNormalPreview = 2;
-        const maxOverlayPreview = 3;
-        let allPreviews = [];
-        let loadedCount = 0;
-
-        const updateFilePreviewProgress = () => {
-            loadedCount++;
-            const percentComplete = (loadedCount / selectedFiles.length) * 100;
-            filePreviewProgressBar.style.width = percentComplete.toFixed(0) + '%';
-            filePreviewProgressText.textContent = percentComplete.toFixed(0) + '%';
-            if (loadedCount === selectedFiles.length) {
-                setTimeout(() => {
-                    filePreviewProgressBarContainer.style.display = 'none';
-                }, 500);
-            }
-        };
-
+        uploadText.style.display = selectedFiles.length > 0 ? "none" : "block";
+        previewContainer.style.minHeight = selectedFiles.length > 0 ? "100px" : "auto";
+    
         selectedFiles.forEach(file => {
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'file-preview-item';
+    
             if (file.type.startsWith("image/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const reader = new FileReader();
-                    reader.onload = function (e) {
-                        const img = document.createElement("img");
-                        img.src = e.target.result;
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    reader.readAsDataURL(file);
-                }));
-            } else if (file.type.startsWith("video/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const video = document.createElement('video');
-                    video.preload = 'metadata';
-                    video.src = URL.createObjectURL(file);
-                    video.onloadeddata = function () { video.currentTime = 0; };
-                    video.onseeked = function () {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const img = document.createElement('img');
-                        img.src = canvas.toDataURL('image/jpeg');
-                        URL.revokeObjectURL(video.src);
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    video.onerror = function () {
-                        console.error("Video yüklenemedi:", file.name);
-                        const errorDiv = document.createElement('div');
-                        errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
-                        errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
-                        updateFilePreviewProgress();
-                        resolve(errorDiv);
-                    };
-                }));
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.createElement("img");
+                    img.src = e.target.result;
+                    img.style.maxWidth = '100px';
+                    img.style.maxHeight = '100px';
+                    previewDiv.appendChild(img);
+    
+                    const successText = document.createElement('p');
+                    successText.textContent = "Başarıyla yüklendi";
+                    previewDiv.appendChild(successText);
+                };
+                reader.readAsDataURL(file);
             } else {
-                updateFilePreviewProgress();
-                allPreviews.push(Promise.resolve(null));
+                // Video veya diğer dosyalar için sadece metin göster
+                const successText = document.createElement('p');
+                successText.textContent = "Başarıyla yüklendi";
+                previewDiv.appendChild(successText);
             }
-        });
-
-        Promise.all(allPreviews).then(results => {
-            const validPreviews = results.filter(el => el !== null);
-            validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
-            const totalExtraCount = validPreviews.length - maxNormalPreview;
-            if (totalExtraCount > 0) {
-                const overlayStackContainer = document.createElement("div");
-                overlayStackContainer.className = "overlay-stack-container";
-                const slideDistance = 3.75;
-                validPreviews.slice(maxNormalPreview, maxNormalPreview + maxOverlayPreview).forEach((el, index) => {
-                    el.classList.add("overlay");
-                    el.style.left = `${index * slideDistance}px`;
-                    el.style.zIndex = maxOverlayPreview - index;
-                    overlayStackContainer.appendChild(el);
-                });
-                if (totalExtraCount > 0) {
-                    const extra = document.createElement("div");
-                    extra.className = "extra-count";
-                    extra.textContent = `+${totalExtraCount}`;
-                    overlayStackContainer.appendChild(extra);
-                }
-                previewContainer.appendChild(overlayStackContainer);
-            }
+    
+            previewContainer.appendChild(previewDiv);
         });
     });
+
 
     // Form submit ve uploadFile fonksiyonu aynı kalıyor
     mainForm.addEventListener('submit', function(e) {
@@ -270,3 +204,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
