@@ -276,12 +276,13 @@ document.addEventListener("DOMContentLoaded", function () {
             warningContainer = document.createElement('div');
             warningContainer.id = 'warningContainer';
             warningContainer.style.display = 'flex';
-            warningContainer.style.justifyContent = 'space-between'; // iki yana yasla
-            warningContainer.style.margin = '10px 0';
+            warningContainer.style.justifyContent = 'space-between';
+            warningContainer.style.margin = '10px auto';
             warningContainer.style.fontSize = '14px';
             warningContainer.style.lineHeight = '1.4';
+            warningContainer.style.width = '250px';
             warningContainer.style.color = '#333';
-            submitBtn.parentNode.insertBefore(warningContainer, submitBtn.nextSibling);
+            uploadProgressBarContainer.parentNode.insertBefore(warningContainer, uploadProgressBarContainer);
         }
         
         warningContainer.innerHTML = `
@@ -358,6 +359,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
