@@ -125,17 +125,38 @@ document.addEventListener("DOMContentLoaded", function () {
         // Tekrar eden dosyaları filtrele
         const { uniqueFiles, duplicateFiles } = filterDuplicateFiles(newFiles, selectedFiles);
         
-        // Eğer tekrar eden dosyalar varsa kullanıcıyı bilgilendir
+        // 300 dosya sınırı kontrolü
+        const totalFilesAfterAdd = selectedFiles.length + uniqueFiles.length;
+        let filesToAdd = uniqueFiles;
+        let limitExceeded = false;
+        
+        if (totalFilesAfterAdd > 300) {
+            const allowedCount = 300 - selectedFiles.length;
+            filesToAdd = uniqueFiles.slice(0, allowedCount);
+            limitExceeded = true;
+        }
+        
+        // Kullanıcıyı bilgilendir
+        let alertMessage = '';
         if (duplicateFiles.length > 0) {
             const duplicateNames = duplicateFiles.map(file => file.name).join(', ');
-            alert(`Aşağıdaki dosyalar zaten seçilmiş, tekrar eklenmedi:\n${duplicateNames}`);
+            alertMessage += `Aşağıdaki dosyalar zaten seçilmiş, tekrar eklenmedi:\n${duplicateNames}`;
+        }
+        
+        if (limitExceeded) {
+            if (alertMessage) alertMessage += '\n\n';
+            alertMessage += `Maksimum 300 dosya seçilebilir. ${filesToAdd.length} dosya eklendi, ${uniqueFiles.length - filesToAdd.length} dosya sınır aşımı nedeniyle eklenmedi.`;
+        }
+        
+        if (alertMessage) {
+            alert(alertMessage);
         }
         
         // File input'u temizle (aynı dosyanın tekrar seçilebilmesi için change event'inin çalışması)
         fileInput.value = '';
         
-        // Eğer yeni dosya yoksa önizlemeleri tekrar yükleme
-        if (uniqueFiles.length === 0) {
+        // Eğer eklenecek dosya yoksa önizlemeleri tekrar yükleme
+        if (filesToAdd.length === 0) {
             return;
         }
         
