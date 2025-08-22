@@ -6,8 +6,6 @@ document.addEventListener("DOMContentLoaded", function () {
     let totalFilesToUpload = 0;
     let totalBytesToUpload = 0;
     let totalBytesUploaded = 0;
-    let timerInterval;
-    let seconds = 0;
 
     const micBtn = document.getElementById("micBtn");
     const recordPanel = document.getElementById("recordPanel");
@@ -21,7 +19,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBarContainer = document.getElementById("filePreviewProgressBarContainer");
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
-    const timerDisplay = document.getElementById("timerDisplay"); // Yeni eklendi
 
     // Başlangıçta butonları görünmez ve pasif yap
     startBtn.style.display = "none";
@@ -34,12 +31,13 @@ document.addEventListener("DOMContentLoaded", function () {
         recordPanel.classList.toggle("active");
 
         if (recordPanel.classList.contains("active")) {
+            // Görünür ve uygun şekilde etkinleştir
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "inline-block";
             startBtn.disabled = false;
-            stopBtn.disabled = true;
-            timerDisplay.textContent = "00:00"; // Panel açıldığında sayacı sıfırla
+            stopBtn.disabled = true; // başta stop pasif
         } else {
+            // Tekrar gizle
             startBtn.style.display = "none";
             stopBtn.style.display = "none";
             startBtn.disabled = true;
@@ -54,9 +52,6 @@ document.addEventListener("DOMContentLoaded", function () {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
             audioChunks = [];
-
-            // Yeni sayaç fonksiyonu
-            startTimer();
 
             mediaRecorder.addEventListener("dataavailable", event => {
                 audioChunks.push(event.data);
@@ -91,25 +86,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (mediaRecorder && mediaRecorder.state === "recording") {
             mediaRecorder.stop();
         }
-        // Yeni sayaç fonksiyonu
-        stopTimer();
         startBtn.disabled = false;
         stopBtn.disabled = true;
     });
-
-    function startTimer() {
-        seconds = 0;
-        timerInterval = setInterval(() => {
-            seconds++;
-            const minutes = Math.floor(seconds / 60).toString().padStart(2, '0');
-            const remainingSeconds = (seconds % 60).toString().padStart(2, '0');
-            timerDisplay.textContent = `${minutes}:${remainingSeconds}`;
-        }, 1000);
-    }
-
-    function stopTimer() {
-        clearInterval(timerInterval);
-    }
 
     // Dosya yükleme ve önizleme kısmı
     const fileInput = document.getElementById('real-file');
@@ -191,6 +170,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     overlayStackContainer.appendChild(el);
                 });
                 
+                // Üst üste binen dosya sayısını gösteren etiket
                 if (totalExtraCount > 0) {
                     const extra = document.createElement("div");
                     extra.className = "extra-count";
@@ -203,6 +183,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
+    // Form submit ve uploadFile fonksiyonu
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
