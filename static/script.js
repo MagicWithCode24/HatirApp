@@ -274,7 +274,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // Timeout için daha uzun süre - büyük yüklemeler için
-        xhr.timeout = 300000; // 5 dakika
+        xhr.timeout = 1200000; // 5 dakika
         xhr.addEventListener('timeout', function() {
             console.error("Timeout - yükleme çok uzun sürdü");
             alert("Yükleme zaman aşımına uğradı. Dosyalar çok büyük olabilir.");
@@ -293,4 +293,5 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 });
+
 
