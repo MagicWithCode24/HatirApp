@@ -185,9 +185,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
             }
 
-            if (newFiles.length >= 100) {
+            if (selectedFiles.length > 0) {
                 uploadTipText.style.display = 'block';
-            } else {
+            } 
+            else {
                 uploadTipText.style.display = 'none';
             }
         });
@@ -267,6 +268,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
