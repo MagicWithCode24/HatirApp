@@ -192,8 +192,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             
             // Android sınırı uyarısı
-            if (selectedFiles.length >= 99) {
-                alert("📱 Android sınırı nedeniyle 100+ foto için tekrar 'Dosya Seç' butonuna basın");
+            if (selectedFiles.length >= 100) {
+                alert("📱 Daha fazla foto eklemek için tekrar dosya seçme bölümüne tıklayın");
             }
         });
     });
@@ -293,3 +293,4 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 });
+
