@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         selectedFiles = [...selectedFiles, ...newFiles];
-
+    
         previewContainer.innerHTML = '';
         if (selectedFiles.length > 0) {
             uploadText.style.display = "none";
@@ -111,12 +111,12 @@ document.addEventListener("DOMContentLoaded", function () {
             previewContainer.style.minHeight = "auto";
             filePreviewProgressBarContainer.style.display = 'none';
         }
-
+    
         const maxNormalPreview = 2;
         const maxOverlayPreview = 3;
         let allPreviews = [];
         let loadedCount = 0;
-
+    
         const updateFilePreviewProgress = () => {
             loadedCount++;
             const percentComplete = (loadedCount / selectedFiles.length) * 100;
@@ -128,7 +128,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }, 500);
             }
         };
-
+    
         selectedFiles.forEach(file => {
             if (file.type.startsWith("image/")) {
                 allPreviews.push(new Promise(resolve => {
@@ -141,39 +141,16 @@ document.addEventListener("DOMContentLoaded", function () {
                     };
                     reader.readAsDataURL(file);
                 }));
-            } else if (file.type.startsWith("video/")) {
-                allPreviews.push(new Promise(resolve => {
-                    const video = document.createElement('video');
-                    video.preload = 'metadata';
-                    video.src = URL.createObjectURL(file);
-                    video.onloadeddata = function () { video.currentTime = 0; };
-                    video.onseeked = function () {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth;
-                        canvas.height = video.videoHeight;
-                        const ctx = canvas.getContext('2d');
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                        const img = document.createElement('img');
-                        img.src = canvas.toDataURL('image/jpeg');
-                        URL.revokeObjectURL(video.src);
-                        updateFilePreviewProgress();
-                        resolve(img);
-                    };
-                    video.onerror = function () {
-                        console.error("Video yüklenemedi:", file.name);
-                        const errorDiv = document.createElement('div');
-                        errorDiv.textContent = 'Video önizlemesi yüklenemedi.';
-                        errorDiv.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;';
-                        updateFilePreviewProgress();
-                        resolve(errorDiv);
-                    };
-                }));
             } else {
+                // Video preview logic is removed. We'll create a simple placeholder instead.
                 updateFilePreviewProgress();
-                allPreviews.push(Promise.resolve(null));
+                const placeholder = document.createElement('div');
+                placeholder.textContent = file.type.startsWith("video/") ? 'Video dosyası' : 'Diğer dosya';
+                placeholder.style.cssText = 'width:80px;height:100px;border:2px dashed #ccc;display:flex;align-items:center;justify-content:center;font-size:10px;text-align:center;color:#888;overflow:hidden;margin-right:10px;';
+                allPreviews.push(Promise.resolve(placeholder));
             }
         });
-
+    
         Promise.all(allPreviews).then(results => {
             const validPreviews = results.filter(el => el !== null);
             validPreviews.slice(0, maxNormalPreview).forEach(el => previewContainer.appendChild(el));
@@ -270,3 +247,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
