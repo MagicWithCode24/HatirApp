@@ -311,14 +311,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 const percentComplete = (totalBytesUploaded / totalBytesToUpload) * 100;
                 const loadedMB = (totalBytesUploaded / (1024 * 1024)).toFixed(2);
                 const totalMB = (totalBytesToUpload / (1024 * 1024)).toFixed(2);
-        
                 uploadProgressBar.style.width = percentComplete.toFixed(0) + '%';
-                
-                if (percentComplete >= 100) {
-                    uploadProgressText.textContent = "Sisteme gönderiliyor...";
-                } else {
-                    uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
-                }
+                uploadProgressText.textContent = percentComplete.toFixed(0) + '% (' + loadedMB + ' MB / ' + totalMB + ' MB)';
             }
         });
 
@@ -340,4 +334,3 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
-
