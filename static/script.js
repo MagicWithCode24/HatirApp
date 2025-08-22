@@ -139,8 +139,26 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
         }
         
+        const previousFileCount = selectedFiles.length;
+        
         // Sadece benzersiz dosyaları ekle
         selectedFiles = [...selectedFiles, ...uniqueFiles];
+        
+        // Eğer daha önce 4 veya daha fazla dosya varsa önizlemeleri tekrar yükleme
+        // Çünkü zaten maksimum önizleme gösterilmiş
+        if (previousFileCount >= 4) {
+            // Sadece extra count'u güncelle
+            const overlayStackContainer = previewContainer.querySelector('.overlay-stack-container');
+            if (overlayStackContainer) {
+                const extraCountElement = overlayStackContainer.querySelector('.extra-count');
+                if (extraCountElement) {
+                    const maxNormalPreview = 2;
+                    const totalExtraCount = selectedFiles.length - maxNormalPreview;
+                    extraCountElement.textContent = `+${totalExtraCount}`;
+                }
+            }
+            return;
+        }
         
         previewContainer.innerHTML = '';
 
