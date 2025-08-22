@@ -60,7 +60,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const previewArea = document.getElementById("audioPreview");
                 previewArea.innerHTML = "";
                 const audio = document.createElement("audio");
-                // audio.controls = true; // kontrol kaldırıldı
+                audio.controls = true;
                 audio.src = audioUrl;
                 const label = document.createElement("p");
                 label.textContent = "Kaydınız:";
@@ -246,3 +246,4 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
