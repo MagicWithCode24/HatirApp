@@ -261,8 +261,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-        if (selectedFiles.length === 0) {
-            alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
+
+        const noteContent = document.querySelector("textarea[name='note']").value.trim();
+        
+        if (selectedFiles.length === 0 && noteContent === "") {
+            alert("Lütfen en az bir dosya seçin, ses kaydı yapın veya not girin.");
             return;
         }
 
@@ -352,6 +355,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
