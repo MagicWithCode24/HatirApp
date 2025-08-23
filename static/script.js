@@ -261,11 +261,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     mainForm.addEventListener('submit', function(e) {
         e.preventDefault();
-
-        const noteContent = document.querySelector("textarea[name='note']").value.trim();
-        
-        if (selectedFiles.length === 0 && noteContent === "") {
-            alert("Lütfen en az bir dosya seçin, ses kaydı yapın veya not girin.");
+        if (selectedFiles.length === 0) {
+            alert("Lütfen yüklenecek bir dosya seçin veya ses kaydı yapın.");
             return;
         }
 
@@ -296,13 +293,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
-        
-        let filesToUpload = [...selectedFiles];
-        if (noteContent !== "") {
-            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            filesToUpload.push(noteFile);
-        }
-        
         totalBytesToUpload = selectedFiles.reduce((sum, file) => sum + file.size, 0);
         totalBytesUploaded = 0;
 
@@ -313,6 +303,12 @@ document.addEventListener("DOMContentLoaded", function () {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
+
+        const noteContent = document.querySelector("textarea[name='note']").value;
+        if (noteContent.trim() !== "") {
+            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
+            formData.append("file", noteFile);
+        }
 
         const xhr = new XMLHttpRequest();
         let fileLastUploaded = 0;
@@ -356,10 +352,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
-
-
-
-
 
 
 
