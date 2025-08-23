@@ -251,11 +251,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 infoText = document.createElement("p");
                 infoText.id = "photoSelectInfo";
                 infoText.style.marginTop = "20px";
-                infoText.style.fontSize = "20px";
+                infoText.style.fontSize = "18px";
                 infoText.style.color = "#555";
                 fileInput.parentNode.appendChild(infoText);
             }
-            infoText.innerHTML = "Tek seferde en fazla 300 adet fotoğraf seçebilirsiniz.<br><br>Daha fazla fotoğraf seçmek için seçme yerine bir daha basın.<br><br>Halihazırda seçilmiş fotoğraflar bir daha seçilemez.";
+            infoText.innerHTML = "Daha fazla fotoğraf seçmek için seçme yerine bir daha basın.<br><br>Tek seferde en fazla 300 adet fotoğraf seçebilirsiniz.<br><br>Halihazırda seçilmiş fotoğraflar bir daha seçilemez.";
         });
     });
 
@@ -352,6 +352,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
