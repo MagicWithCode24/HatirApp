@@ -251,7 +251,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 infoText = document.createElement("p");
                 infoText.id = "photoSelectInfo";
                 infoText.style.marginTop = "20px";
-                infoText.style.fontSize = "17px";
+                infoText.style.fontSize = "20px";
                 infoText.style.color = "#555";
                 fileInput.parentNode.appendChild(infoText);
             }
@@ -352,6 +352,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
