@@ -20,13 +20,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const filePreviewProgressBar = document.getElementById("filePreviewProgressBar");
     const filePreviewProgressText = document.getElementById("filePreviewProgressText");
 
-    // Başlangıçta butonları görünmez ve pasif yap
     startBtn.style.display = "none";
     stopBtn.style.display = "none";
     startBtn.disabled = true;
     stopBtn.disabled = true;
 
-    // Dosya benzersizliği kontrol fonksiyonu
     function isDuplicateFile(newFile, existingFiles) {
         return existingFiles.some(existingFile => {
             return existingFile.name === newFile.name && 
@@ -36,7 +34,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
-    // Tekrar eden dosyaları filtrele
     function filterDuplicateFiles(newFiles, existingFiles) {
         const uniqueFiles = [];
         const duplicateFiles = [];
@@ -59,7 +56,7 @@ document.addEventListener("DOMContentLoaded", function () {
             startBtn.style.display = "inline-block";
             stopBtn.style.display = "inline-block";
             startBtn.disabled = false;
-            stopBtn.disabled = true; // başta stop pasif
+            stopBtn.disabled = true;
         } else {
             startBtn.style.display = "none";
             stopBtn.style.display = "none";
@@ -92,8 +89,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 label.textContent = "Kaydınız:";
                 previewArea.appendChild(label);
                 previewArea.appendChild(audio);
-                
-                // Ses kaydı için benzersiz isim oluştur (timestamp ile)
                 const timestamp = Date.now();
                 selectedFiles.push(new File([audioBlob], `recording_${timestamp}.wav`, { type: 'audio/wav' }));
             });
@@ -114,7 +109,6 @@ document.addEventListener("DOMContentLoaded", function () {
         stopBtn.disabled = true;
     });
 
-    // Dosya yükleme ve önizleme kısmı
     const fileInput = document.getElementById('real-file');
     const previewContainer = document.getElementById('uploadPreview');
     const uploadText = document.getElementById('uploadText');
@@ -122,10 +116,8 @@ document.addEventListener("DOMContentLoaded", function () {
     fileInput.addEventListener('change', () => {
         const newFiles = Array.from(fileInput.files);
         
-        // Tekrar eden dosyaları filtrele
         const { uniqueFiles, duplicateFiles } = filterDuplicateFiles(newFiles, selectedFiles);
         
-        // 300 dosya sınırı kontrolü
         const totalFilesAfterAdd = selectedFiles.length + uniqueFiles.length;
         let filesToAdd = uniqueFiles;
         let limitExceeded = false;
@@ -136,7 +128,6 @@ document.addEventListener("DOMContentLoaded", function () {
             limitExceeded = true;
         }
         
-        // Kullanıcıyı bilgilendir
         let alertMessage = '';
         if (duplicateFiles.length > 0) {
             const duplicateNames = duplicateFiles.map(file => file.name).join(', ');
@@ -152,23 +143,17 @@ document.addEventListener("DOMContentLoaded", function () {
             alert(alertMessage);
         }
         
-        // File input'u temizle (aynı dosyanın tekrar seçilebilmesi için change event'inin çalışması)
         fileInput.value = '';
         
-        // Eğer eklenecek dosya yoksa önizlemeleri tekrar yükleme
         if (filesToAdd.length === 0) {
             return;
         }
         
         const previousFileCount = selectedFiles.length;
         
-        // Sadece benzersiz dosyaları ekle
         selectedFiles = [...selectedFiles, ...uniqueFiles];
         
-        // Eğer daha önce 4 veya daha fazla dosya varsa önizlemeleri tekrar yükleme
-        // Çünkü zaten maksimum önizleme gösterilmiş
         if (previousFileCount >= 4) {
-            // Sadece extra count'u güncelle
             const overlayStackContainer = previewContainer.querySelector('.overlay-stack-container');
             if (overlayStackContainer) {
                 const extraCountElement = overlayStackContainer.querySelector('.extra-count');
@@ -195,7 +180,6 @@ document.addEventListener("DOMContentLoaded", function () {
             filePreviewProgressBarContainer.style.display = 'none';
         }
 
-        // Önizleme için dosya sayısını sınırla
         const maxNormalPreview = 2;
         const maxOverlayPreview = 2;
         const filesToPreview = selectedFiles.slice(0, maxNormalPreview + maxOverlayPreview);
@@ -266,7 +250,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!infoText) {
                 infoText = document.createElement("p");
                 infoText.id = "photoSelectInfo";
-                infoText.style.marginTop = "10px";
+                infoText.style.marginTop = "20px";
                 infoText.style.fontSize = "14px";
                 infoText.style.color = "#555";
                 fileInput.parentNode.appendChild(infoText);
@@ -368,6 +352,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
