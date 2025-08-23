@@ -261,6 +261,17 @@ document.addEventListener("DOMContentLoaded", function () {
 
                 previewContainer.appendChild(overlayStackContainer);
             }
+
+            let infoText = document.getElementById("photoSelectInfo");
+            if (!infoText) {
+                infoText = document.createElement("p");
+                infoText.id = "photoSelectInfo";
+                infoText.style.marginTop = "10px";
+                infoText.style.fontSize = "14px";
+                infoText.style.color = "#555";
+                fileInput.parentNode.appendChild(infoText);
+            }
+            infoText.textContent = "Daha fazla fotoğraf seçmek için seçme yerine bir daha basın. Halihazırda seçilmiş fotoğraflar bir daha seçilemez.";
         });
     });
 
@@ -357,5 +368,6 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
