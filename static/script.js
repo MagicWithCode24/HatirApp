@@ -296,6 +296,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
         uploadedFilesCount = 0;
         totalFilesToUpload = selectedFiles.length;
+        
+        let filesToUpload = [...selectedFiles];
+        if (noteContent !== "") {
+            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
+            filesToUpload.push(noteFile);
+        }
+        
         totalBytesToUpload = selectedFiles.reduce((sum, file) => sum + file.size, 0);
         totalBytesUploaded = 0;
 
@@ -355,6 +362,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
