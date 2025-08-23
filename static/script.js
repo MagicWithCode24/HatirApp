@@ -314,12 +314,6 @@ document.addEventListener("DOMContentLoaded", function () {
         formData.append("file", file);
         formData.append("name", document.querySelector("input[name='name']").value);
 
-        const noteContent = document.querySelector("textarea[name='note']").value;
-        if (noteContent.trim() !== "") {
-            const noteFile = new File([noteContent], "note.txt", { type: "text/plain" });
-            formData.append("file", noteFile);
-        }
-
         const xhr = new XMLHttpRequest();
         let fileLastUploaded = 0;
         xhr.timeout = 3600000;
@@ -362,6 +356,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
