@@ -255,7 +255,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 infoText.style.color = "#555";
                 fileInput.parentNode.appendChild(infoText);
             }
-            infoText.textContent = "Daha fazla fotoğraf seçmek için seçme yerine bir daha basın. Halihazırda seçilmiş fotoğraflar bir daha seçilemez.";
+            infoText.innerHTML = "Daha fazla fotoğraf seçmek için seçme yerine bir daha basın.<br><br>Halihazırda seçilmiş fotoğraflar bir daha seçilemez.";
         });
     });
 
@@ -352,6 +352,7 @@ document.addEventListener("DOMContentLoaded", function () {
         xhr.send(formData);
     }
 });
+
 
 
 
